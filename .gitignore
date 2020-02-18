@@ -1,0 +1,166 @@
+Last login: Thu Feb 13 15:06:21 on ttys001
+➜  ~ /Users/philipp/Local/GitRepos/pantos
+➜  pantos git clone git@github.com:msigwart/nap-token.git
+Klone nach 'nap-token' ...
+Enter passphrase for key '/Users/philipp/.ssh/id_rsa':
+remote: Enumerating objects: 76, done.
+remote: Counting objects: 100% (76/76), done.
+remote: Compressing objects: 100% (40/40), done.
+remote: Total 76 (delta 34), reused 69 (delta 27), pack-reused 0
+Empfange Objekte: 100% (76/76), 64.15 KiB | 656.00 KiB/s, Fertig.
+Löse Unterschiede auf: 100% (34/34), Fertig.
+➜  pantos nap-token
+➜  nap-token git:(master)  git log
+➜  nap-token git:(master) npm install
+
+> keccak@2.1.0 install /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/keccak
+> npm run rebuild || echo "Keccak bindings compilation fail. Pure JS implementation will be used."
+
+
+> keccak@2.1.0 rebuild /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/keccak
+> node-gyp rebuild
+
+No receipt for 'com.apple.pkg.CLTools_Executables' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLILeo' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLI' found at '/'.
+
+gyp: No Xcode or CLT version detected!
+gyp ERR! configure error
+gyp ERR! stack Error: `gyp` failed with exit code: 1
+gyp ERR! stack     at ChildProcess.onCpExit (/usr/local/Cellar/node@10/10.16.0/lib/node_modules/npm/node_modules/node-gyp/lib/configure.js:345:16)
+gyp ERR! stack     at ChildProcess.emit (events.js:198:13)
+gyp ERR! stack     at Process.ChildProcess._handle.onexit (internal/child_process.js:248:12)
+gyp ERR! System Darwin 19.3.0
+gyp ERR! command "/usr/local/Cellar/node@10/10.16.0/bin/node" "/usr/local/Cellar/node@10/10.16.0/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js" "rebuild"
+gyp ERR! cwd /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/keccak
+gyp ERR! node -v v10.16.0
+gyp ERR! node-gyp -v v3.8.0
+gyp ERR! not ok
+npm ERR! code ELIFECYCLE
+npm ERR! errno 1
+npm ERR! keccak@2.1.0 rebuild: `node-gyp rebuild`
+npm ERR! Exit status 1
+npm ERR!
+npm ERR! Failed at the keccak@2.1.0 rebuild script.
+npm ERR! This is probably not a problem with npm. There is likely additional logging output above.
+npm WARN Local package.json exists, but node_modules missing, did you mean to install?
+
+npm ERR! A complete log of this run can be found in:
+npm ERR!     /Users/philipp/.npm/_logs/2020-02-18T12_35_01_638Z-debug.log
+Keccak bindings compilation fail. Pure JS implementation will be used.
+
+> keccak@1.4.0 install /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/merkle-patricia-tree/node_modules/keccak
+> npm run rebuild || echo "Keccak bindings compilation fail. Pure JS implementation will be used."
+
+
+> keccak@1.4.0 rebuild /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/merkle-patricia-tree/node_modules/keccak
+> node-gyp rebuild
+
+No receipt for 'com.apple.pkg.CLTools_Executables' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLILeo' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLI' found at '/'.
+
+gyp: No Xcode or CLT version detected!
+gyp ERR! configure error
+gyp ERR! stack Error: `gyp` failed with exit code: 1
+gyp ERR! stack     at ChildProcess.onCpExit (/usr/local/Cellar/node@10/10.16.0/lib/node_modules/npm/node_modules/node-gyp/lib/configure.js:345:16)
+gyp ERR! stack     at ChildProcess.emit (events.js:198:13)
+gyp ERR! stack     at Process.ChildProcess._handle.onexit (internal/child_process.js:248:12)
+gyp ERR! System Darwin 19.3.0
+gyp ERR! command "/usr/local/Cellar/node@10/10.16.0/bin/node" "/usr/local/Cellar/node@10/10.16.0/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js" "rebuild"
+gyp ERR! cwd /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/merkle-patricia-tree/node_modules/keccak
+gyp ERR! node -v v10.16.0
+gyp ERR! node-gyp -v v3.8.0
+gyp ERR! not ok
+npm ERR! code ELIFECYCLE
+npm ERR! errno 1
+npm ERR! keccak@1.4.0 rebuild: `node-gyp rebuild`
+npm ERR! Exit status 1
+npm ERR!
+npm ERR! Failed at the keccak@1.4.0 rebuild script.
+npm ERR! This is probably not a problem with npm. There is likely additional logging output above.
+npm WARN Local package.json exists, but node_modules missing, did you mean to install?
+
+npm ERR! A complete log of this run can be found in:
+npm ERR!     /Users/philipp/.npm/_logs/2020-02-18T12_35_02_546Z-debug.log
+Keccak bindings compilation fail. Pure JS implementation will be used.
+
+> secp256k1@3.8.0 install /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/secp256k1
+> npm run rebuild || echo "Secp256k1 bindings compilation fail. Pure JS implementation will be used."
+
+
+> secp256k1@3.8.0 rebuild /Users/philipp/Local/GitRepos/pantos/nap-token/node_modules/secp256k1
+> node-gyp rebuild
+
+No receipt for 'com.apple.pkg.CLTools_Executables' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLILeo' found at '/'.
+
+No receipt for 'com.apple.pkg.DeveloperToolsCLI' found at '/'.
+
+gyp: No Xcode or CLT version detected!
+gyp ERR! configure error
+gyp ERR! stack Error: `gyp` failed with exit code: 1
+
+# Created by https://www.gitignore.io/api/node,intellij,solidity,intellij+iml,soliditytruffle
+# Edit at https://www.gitignore.io/?templates=node,intellij,solidity,intellij+iml,soliditytruffle
+
+### Intellij ###
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# User-specific stuff
+.idea/
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+# Generated files
+.idea/**/contentModel.xml
+
+# Sensitive or high-churn files
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+
+# Gradle
+.idea/**/gradle.xml
+.idea/**/libraries
+
+# Gradle and Maven with auto-import
+# When using Gradle or Maven with auto-import, you should exclude module files,
+# since they will be recreated, and may cause churn.  Uncomment if using
+# auto-import.
+# .idea/modules.xml
+# .idea/*.iml
+# .idea/modules
+# *.iml
+# *.ipr
+
+# CMake
+cmake-build-*/
+
+# Mongo Explorer plugin
+.idea/**/mongoSettings.xml
+
+# File-based project format
+*.iws
+
+# IntelliJ
+out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/
+
+# JIRA plugin
+".gitignore" 316L, 5627C
