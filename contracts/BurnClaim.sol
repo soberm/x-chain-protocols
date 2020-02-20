@@ -11,7 +11,7 @@ contract BurnClaim is ERC20 {
     struct ClaimData {
         address burnContract;   // the contract which has burnt the tokens on the other blockchian
         address recipient;
-        address destinationTokenContract;
+        address claimContract;
         uint value;        // the value to create on this chain
         bool isBurnValid;    // indicates whether the burning of tokens has taken place (didn't abort, e.g., due to require statement)
     }
@@ -41,11 +41,11 @@ contract BurnClaim is ERC20 {
         participatingTokenContracts[tokenContract] = true;
     }
 
-    function burn(address recipient, address destinationTokenContract, uint value) public {
+    function burn(address recipient, address claimContract, uint value) public {
         require(recipient != address(0), "recipient address must not be zero address");
-        require(participatingTokenContracts[destinationTokenContract] == true, "destination token contract address is not registered");
+        require(participatingTokenContracts[claimContract] == true, "claim contract address is not registered");
         _burn(msg.sender, value);
-        emit Burn(recipient, destinationTokenContract, value);
+        emit Burn(recipient, claimContract, value);
     }
 
     function claim(
@@ -64,7 +64,7 @@ contract BurnClaim is ERC20 {
         // check pre-conditions
         require(claimedTransactions[txHash] == false, "tokens have already been claimed");
         require(participatingTokenContracts[c.burnContract] == true, "burn contract address is not registered");
-        require(c.destinationTokenContract == address(this), "this contract has not been specified as destination token contract");
+        require(c.claimContract == address(this), "this contract has not been specified as destination token contract");
         require(c.isBurnValid == true, "burn transaction was not successful (e.g., require statement was violated)");
 
         // verify inclusion of burn transaction
@@ -111,7 +111,7 @@ contract BurnClaim is ERC20 {
 
         // read value and recipient from burn event
         c.recipient = address(burnEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.destinationTokenContract = address(burnEventTopics[2].toUint());
+        c.claimContract = address(burnEventTopics[2].toUint());
         c.value = burnEventTopics[3].toUint();
 
         return c;
@@ -134,10 +134,10 @@ contract BurnClaim is ERC20 {
         }
     }
 
-    event Burn(address indexed recipient, address indexed destinationTokenContract, uint indexed value);
+    event Burn(address indexed recipient, address indexed claimContract, uint indexed value);
     event Claim(
         bytes32 indexed burnTxHash,
-        address indexed sourceTokenContract,
+        address indexed burnContract,
         address indexed recipient,
         address feeRecipient,
         uint value,
