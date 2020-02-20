@@ -56,7 +56,7 @@ contract BurnClaim is ERC20 {
         bytes memory rlpMerkleProofReceipt, // rlp-encoded Merkle proof of Membership for burn receipt (later passed to relay)
         bytes memory path                   // the path from the root node down to the burn tx/receipt in the corresponding Merkle tries (tx, receipt).
                                             // path is the same for both tx and its receipt.
-    ) public payable {
+    ) public {
 
         ClaimData memory c = extractClaim(rlpEncodedTx, rlpEncodedReceipt);
         bytes32 txHash = keccak256(rlpEncodedTx);
