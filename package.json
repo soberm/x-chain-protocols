@@ -1,0 +1,26 @@
+{
+  "name": "nap-token",
+  "version": "0.0.1",
+  "description": "A cross-blockchain token",
+  "main": "truffle-config.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@openzeppelin/contracts": "^2.4.0",
+    "solidity-rlp": "^2.0.1"
+  },
+  "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.4",
+    "chai": "^4.2.0",
+    "ethereumjs-tx": "^2.1.2",
+    "ethereumjs-util": "^6.2.0",
+    "merkle-patricia-tree": "^3.0.0",
+    "rlp": "^2.2.4"
+  }
+}
