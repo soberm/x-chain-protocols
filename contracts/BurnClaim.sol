@@ -11,6 +11,7 @@ contract BurnClaim is ERC20 {
     struct ClaimData {
         address burnContract;   // the contract which has burnt the tokens on the other blockchian
         address recipient;
+        address destinationTokenContract;
         uint value;        // the value to create on this chain
         bool isBurnValid;    // indicates whether the burning of tokens has taken place (didn't abort, e.g., due to require statement)
     }
@@ -63,6 +64,7 @@ contract BurnClaim is ERC20 {
         // check pre-conditions
         require(claimedTransactions[txHash] == false, "tokens have already been claimed");
         require(participatingTokenContracts[c.burnContract] == true, "burn contract address is not registered");
+        require(c.destinationTokenContract == address(this), "this contract has not been specified as destination token contract");
         require(c.isBurnValid == true, "burn transaction was not successful (e.g., require statement was violated)");
 
         // verify inclusion of burn transaction
@@ -108,8 +110,9 @@ contract BurnClaim is ERC20 {
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields
 
         // read value and recipient from burn event
-        c.value = burnEventTopics[3].toUint();
         c.recipient = address(burnEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.destinationTokenContract = address(burnEventTopics[2].toUint());
+        c.value = burnEventTopics[3].toUint();
 
         return c;
     }

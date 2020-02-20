@@ -444,6 +444,38 @@ contract('BurnClaim', (accounts) => {
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract + value));
    });
 
+   it('should not allow to claim tokens on wrong destination token contract', async () => {
+      const sender = accounts[0];
+      const value = 3;
+      const recipient = accounts[0];
+
+      await sourceTokenContract.registerTokenContract(sourceTokenContract.address);
+      const burnResult = await sourceTokenContract.burn(recipient, sourceTokenContract.address, new BN(value), {
+         from: sender
+      });
+
+      const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
+      const tx                = await web3.eth.getTransaction(burnResult.tx);
+      const txReceipt         = await web3.eth.getTransactionReceipt(burnResult.tx);
+      const rlpHeader         = createRLPHeader(block);
+      const rlpEncodedTx      = createRLPTransaction(tx);
+      const rlpEncodedReceipt = createRLPReceipt(txReceipt);
+
+      const path = RLP.encode(tx.transactionIndex);
+      const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
+      const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
+
+      await expectRevert(destinationTokenContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+          'this contract has not been specified as destination token contract');
+
+      let balance;
+      balance = await sourceTokenContract.balanceOf(accounts[0]);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value));
+
+      balance = await destinationTokenContract.balanceOf(accounts[0]);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract));
+   });
+
    const createTxMerkleProof = async (block, transactionIndex) => {
       const trie = newTrie();
 
