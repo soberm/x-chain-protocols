@@ -22,6 +22,7 @@ const TxInclusionVerifier = artifacts.require('MockedTxInclusionVerifier');
 const InitialBalanceSourceContract = 10;
 const InitialBalanceDestinationContract = 10;
 
+
 contract('BurnClaim', (accounts) => {
    let burnContract;  // token contract living on the source blockchain (tokens are burnt on this chain)
    let claimContract;  // token contract living on the destination blockchian (tokens are claimed on this chain)
@@ -89,6 +90,12 @@ contract('BurnClaim', (accounts) => {
 
    it('should not burn tokens if recipient is zero address', async () => {
       await expectRevert(burnContract.burn(constants.ZERO_ADDRESS, burnContract.address, new BN(1)), 'recipient address must not be zero address');
+      const balance = await burnContract.balanceOf(accounts[0]);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
+   });
+
+   it('should not burn tokens if the sender\'s balance is too low', async () => {
+      await expectRevert(burnContract.burn(accounts[0], claimContract.address, new BN(11)), 'sender has not enough tokens');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });

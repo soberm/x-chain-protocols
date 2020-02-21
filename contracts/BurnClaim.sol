@@ -44,6 +44,7 @@ contract BurnClaim is ERC20 {
     function burn(address recipient, address claimContract, uint value) public {
         require(recipient != address(0), "recipient address must not be zero address");
         require(participatingTokenContracts[claimContract] == true, "claim contract address is not registered");
+        require(balanceOf(msg.sender) >= value, 'sender has not enough tokens');
         _burn(msg.sender, value);
         emit Burn(recipient, claimContract, value);
     }
