@@ -2,6 +2,9 @@ pragma solidity ^0.5.13;
 
 import "./TxInclusionVerifier.sol";
 
+/**
+   This contract is used for automated tests.
+*/
 contract MockedTxInclusionVerifier is TxInclusionVerifier {
 
     uint8 verifyTxResult;

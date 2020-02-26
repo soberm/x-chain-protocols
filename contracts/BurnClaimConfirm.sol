@@ -6,13 +6,14 @@ import "./TxInclusionVerifier.sol";
 
 contract BurnClaimConfirm is ERC20 {
     using RLPReader for RLPReader.RLPItem;
+    using RLPReader for RLPReader.Iterator;
     using RLPReader for bytes;
 
     struct ClaimData {
         address burnContract;   // the contract which has burnt the tokens on the other blockchian
         address sender;         // sender on the burn token contract
         address recipient;      // recipient on the destination token contract
-        address claimContract;   // address of the contract that should process the claim tx
+        address claimContract;  // address of the contract that should process the claim tx
         uint value;             // the value to create on this chain
         bool isBurnValid;       // indicates whether the burning of tokens has taken place (didn't abort, e.g., due to require statement)
         uint burnTime;          // specifies the block number of the block containing the burn tx
@@ -23,22 +24,21 @@ contract BurnClaimConfirm is ERC20 {
         address burnContract;   // address of the contract that should have processed the burn tx
         address sender;         // sender who burnt the tokens
         bool isClaimValid;      // true if claim tx has been successfully executed (e.g., no require statement triggered)
-        address stakeRecipient; // client who will receive the stake on the source blockchain when confirm tx is posted after fair confirm period
         uint burnTime;          // specifies the block number of the block containing the burn tx
     }
 
     TxInclusionVerifier txInclusionVerifier;
-    mapping(bytes32 => bool) claimedBurnTransactions;
+    mapping(bytes32 => bool) claimedTransactions;
     mapping(bytes32 => bool) confirmedClaimTransactions;
     uint chainIdentifier;
     mapping(address => bool) participatingTokenContracts;  // addresses of the token contracts living on other blockchains
     uint TRANSFER_FEE = 10;  // 1/10 of the transfer amount
+    uint constant REQUIRED_STAKE = 1;
     uint8 constant REQUIRED_TX_CONFIRMATIONS = 10;  // number of blocks that have to follow the block containing a tx to consider it confirmed
-    uint constant ETH_IN_WEI = 1000000000000000000;
-    uint constant REQUIRED_STAKE_WEI = 1 * ETH_IN_WEI;   // required stake in Wei for burn
-    uint constant FAIR_CONFIRM_PERIOD = 40;  // Number of blocks that must follow the block containing the claim tx.
-                                             // Posting a confirm tx within this period results in transferring the stake to the burner.
-                                             // If the confirm tx is posted after this period, the client submitting the tx receives the stake.
+    uint constant FAIR_CLAIM_PERIOD = 20;  // Number of blocks that must follow the block containing the burn tx.
+                                           // Posting a claim within this period results in transferring the fees to the burner.
+                                           // If the claim is posted after this period, the client submitting the claim gets the fees.
+    uint constant FAIR_CONFIRM_PERIOD = 45; // similar to FAIR_CLAIM_PERIOD but intended for confirm tx
 
     constructor(address[] memory tokenContracts, address txInclVerifier, uint initialSupply) public {
         for (uint i = 0; i < tokenContracts.length; i++) {
@@ -55,20 +55,16 @@ contract BurnClaimConfirm is ERC20 {
         participatingTokenContracts[tokenContract] = true;
     }
 
-    function burn(address recipient, address claimContract, uint value, uint stakeInWei) public payable {
+    function burn(address recipient, address claimContract, uint value, uint stake) public {
         require(recipient != address(0), "recipient address must not be zero address");
-        require(participatingTokenContracts[claimContract] == true, "claim token contract address is not registered");
-        require(msg.value == stakeInWei, 'msg.value does not match function parameter stake');
-        require(stakeInWei == REQUIRED_STAKE_WEI, 'provided stake does not match required stake');
-
-        _burn(msg.sender, value);
-
+        require(participatingTokenContracts[claimContract] == true, "claim contract address is not registered");
+        require(stake == REQUIRED_STAKE, 'provided stake does not match required stake');
+        require(balanceOf(msg.sender) >= value + stake, 'sender has not enough tokens');
+        _burn(msg.sender, value + stake);
         emit Burn(msg.sender, recipient, claimContract, value);
-        emit BurnTime(block.number);  // determines start of fair claim period
     }
 
     function claim(
-        address stakeRecipient,             // the address to which the stake is assigned to when no CONFIRM tx is posted on the source blockchain within fair confir
         bytes memory rlpHeader,             // rlp-encoded header of the block containing burn tx along with its receipt
         bytes memory rlpEncodedTx,          // rlp-encoded burn tx
         bytes memory rlpEncodedReceipt,     // rlp-encoded receipt of burn tx ('burn receipt)
@@ -76,13 +72,13 @@ contract BurnClaimConfirm is ERC20 {
         bytes memory rlpMerkleProofReceipt, // rlp-encoded Merkle proof of Membership for burn receipt (later passed to relay)
         bytes memory path                   // the path from the root node down to the burn tx/receipt in the corresponding Merkle tries (tx, receipt).
                                             // path is the same for both tx and its receipt.
-    ) public payable {
+    ) public {
 
-        ClaimData memory c = extractClaim(rlpEncodedTx, rlpEncodedReceipt);
+        ClaimData memory c = extractClaim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt);
         bytes32 txHash = keccak256(rlpEncodedTx);
 
         // check pre-conditions
-        require(claimedBurnTransactions[txHash] == false, "tokens have already been claimed");
+        require(claimedTransactions[txHash] == false, "tokens have already been claimed");
         require(participatingTokenContracts[c.burnContract] == true, "burn contract address is not registered");
         require(c.claimContract == address(this), "this contract has not been specified as destination token contract");
         require(c.isBurnValid == true, "burn transaction was not successful (e.g., require statement was violated)");
@@ -95,8 +91,22 @@ contract BurnClaimConfirm is ERC20 {
         uint receiptExists = txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedReceipt, path, rlpMerkleProofReceipt);
         require(receiptExists == 1, "burn receipt does not exist or has not enough confirmations");
 
-        claimedBurnTransactions[txHash] = true; // IMPORTANT: prevent this tx from being used for further claims
-        emit Claim(c.burnContract, c.sender, stakeRecipient, c.burnTime);
+        uint fee = calculateFee(c.value, TRANSFER_FEE);
+        uint remainingValue = c.value - fee;
+        address feeRecipient = c.recipient;
+        if (msg.sender != c.recipient && txInclusionVerifier.isBlockConfirmed(keccak256(rlpHeader), FAIR_CLAIM_PERIOD)) {
+            // other client wants to claim fees
+            // fair claim period has elapsed -> fees go to msg.sender
+            feeRecipient = msg.sender;
+        }
+
+        // mint fees to feeRecipient
+        _mint(feeRecipient, fee);
+        // mint remaining value to recipient
+        _mint(c.recipient, remainingValue);
+
+        claimedTransactions[txHash] = true; // IMPORTANT: prevent this tx from being used for further claims
+        emit Claim(c.burnContract, c.sender, c.burnTime);
     }
 
     function confirm(
@@ -110,7 +120,6 @@ contract BurnClaimConfirm is ERC20 {
     ) public {
         ConfirmData memory c = extractConfirm(rlpEncodedTx, rlpEncodedReceipt);
         bytes32 txHash = keccak256(rlpEncodedTx);
-
         // check pre-conditions
         require(confirmedClaimTransactions[txHash] == false, "claim tx is already confirmed");
         require(participatingTokenContracts[c.claimContract] == true, "claim contract address is not registered");
@@ -127,18 +136,19 @@ contract BurnClaimConfirm is ERC20 {
 
         confirmedClaimTransactions[txHash] = true; // IMPORTANT: prevent this tx from being used for further claims
 
-        address payable stakeRecipientAddr = address(uint160(c.sender));
+        address stakeRecipient = c.sender;
         if (c.burnTime + FAIR_CONFIRM_PERIOD < block.number) {
-            // fair confirm period has already elapsed -> stake goes to stakeRecipient
-            stakeRecipientAddr = address(uint160(c.stakeRecipient));
+            stakeRecipient = msg.sender;
         }
-        stakeRecipientAddr.transfer(REQUIRED_STAKE_WEI);
-
-        emit Confirm(txHash);
+        _mint(stakeRecipient, REQUIRED_STAKE);
     }
 
-    function extractClaim(bytes memory rlpTransaction, bytes memory rlpReceipt) private pure returns (ClaimData memory) {
+    function extractClaim(bytes memory rlpHeader, bytes memory rlpTransaction, bytes memory rlpReceipt) private pure returns (ClaimData memory) {
         ClaimData memory c;
+
+        // get burn time
+        c.burnTime = getBlockNumber(rlpHeader);
+
         // parse transaction
         RLPReader.RLPItem[] memory transaction = rlpTransaction.toRlpItem().toList();
         c.burnContract = transaction[3].toAddress();
@@ -149,20 +159,35 @@ contract BurnClaimConfirm is ERC20 {
 
         // read logs
         RLPReader.RLPItem[] memory logs = receipt[2].toList();
-        RLPReader.RLPItem[] memory burnEventTuple = logs[1].toList();  // logs[0] contains the transfer event emitted by the ECR20 method _burn
-                                                                       // logs[1] contains the burn event emitted by the method burn (this contract)
+        RLPReader.RLPItem[] memory burnEventTuple = logs[1].toList();  // logs[0] contains the transfer events emitted by the ECR20 method _burn
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields
 
         // read value and recipient from burn event
-        c.recipient = address(burnEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.claimContract = address(burnEventTopics[2].toUint());
-        c.value = burnEventTopics[3].toUint();
+        c.sender = address(burnEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.recipient = address(burnEventTopics[2].toUint());
+        c.claimContract = address(burnEventTopics[3].toUint());
+        c.value = burnEventTuple[2].toUint();
 
         return c;
     }
 
+    function getBlockNumber(bytes memory rlpHeader) private pure returns (uint) {
+        RLPReader.Iterator memory it = rlpHeader.toRlpItem().iterator();
+        uint idx = 0;
+        while(it.hasNext()) {
+            if ( idx == 8 ) {
+                return it.next().toUint();
+            }
+            it.next();
+            idx++;
+        }
+
+        return 0;
+    }
+
     function extractConfirm(bytes memory rlpTransaction, bytes memory rlpReceipt) private pure returns (ConfirmData memory) {
         ConfirmData memory c;
+
         // parse transaction
         RLPReader.RLPItem[] memory transaction = rlpTransaction.toRlpItem().toList();
         c.claimContract = transaction[3].toAddress();
@@ -173,13 +198,13 @@ contract BurnClaimConfirm is ERC20 {
 
         // read logs
         RLPReader.RLPItem[] memory logs = receipt[2].toList();
-        RLPReader.RLPItem[] memory claimEvent = logs[0].toList();
+        RLPReader.RLPItem[] memory claimEvent = logs[2].toList();  // logs[0] and logs[1] contain the transfer events emitted by the ECR20 method _mint (called twice in claim method)
         RLPReader.RLPItem[] memory claimEventTopics = claimEvent[1].toList();  // topics contain all indexed event fields
 
-        c.burnContract = address(claimEventTopics[1].toUint()); // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        // read value from claim event
+        c.burnContract = address(claimEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
         c.sender = address(claimEventTopics[2].toUint());
-        c.stakeRecipient = address(claimEventTopics[3].toUint());
-        c.burnTime = claimEvent[2].toUint();
+        c.burnTime = claimEventTopics[3].toUint();
 
         return c;
     }
@@ -201,13 +226,6 @@ contract BurnClaimConfirm is ERC20 {
         }
     }
 
-    event Burn(address indexed sender, address indexed recipient, address indexed claimTokenContract, uint value);
-    event BurnTime(uint time);
-    event Claim(
-        address indexed burnContract,
-        address indexed sender,
-        address indexed stakeRecipient,
-        uint burnTime
-    );
-    event Confirm(bytes32 burnTxHash);
+    event Burn(address indexed sender, address indexed recipient, address indexed claimContract, uint value);
+    event Claim(address indexed burnContract, address indexed sender, uint indexed burnTime);
 }
