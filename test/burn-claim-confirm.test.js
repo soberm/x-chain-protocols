@@ -412,7 +412,7 @@ contract('BurnClaimConfirm', (accounts) => {
    });
 
    // TODO
-   it.only('should confirm claim tx and correctly transfer stake to sender (fair confirm period has not elapsed)', async () => {
+   it('should confirm claim tx and correctly transfer stake to sender (fair confirm period has not elapsed)', async () => {
       await setupContracts(1, 1, false);
 
       const sender = accounts[0];
