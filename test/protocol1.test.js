@@ -4,7 +4,6 @@ const {
     expectEvent,  // Assertions for emitted events
     expectRevert, // Assertions for transactions that should fail
     ether,
-    balance
 } = require('@openzeppelin/test-helpers');
 const {
    asyncTrieProve,
@@ -17,15 +16,14 @@ const {
 const {expect} = require('chai');
 const RLP = require('rlp');
 
-const TokenContract = artifacts.require('BurnClaimConfirm');
+const TokenContract = artifacts.require('Protocol1');
 const TxInclusionVerifier = artifacts.require('MockedTxInclusionVerifier');
 
 const InitialBalanceSourceContract = 10;
 const InitialBalanceDestinationContract = 10;
-const RequiredStakeWei = ether('1');  // 1 ETH
 
 
-contract('BurnClaimConfirm', (accounts) => {
+contract('Protocol1', (accounts) => {
    let burnContract;  // token contract living on the source blockchain (tokens are burnt on this chain)
    let claimContract;  // token contract living on the destination blockchian (tokens are claimed on this chain)
    let txInclusionVerifier;
@@ -55,9 +53,8 @@ contract('BurnClaimConfirm', (accounts) => {
       const sender = accounts[0];
       const value = 5;
       const recipient = accounts[0];
-      const result = await burnContract.burn(recipient, claimContract.address, value, RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const result = await burnContract.burn(recipient, claimContract.address, value, {
+         from: sender
       });
       const balance = await burnContract.balanceOf(sender);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value));
@@ -67,71 +64,52 @@ contract('BurnClaimConfirm', (accounts) => {
          value: new BN(value),
       });
       expectEvent(result.receipt, 'Burn', {
-         sender: sender,
          recipient: recipient,
          claimContract: claimContract.address,
          value: new BN(value)
       });
-      expectEvent(result.receipt, 'BurnTime', {
-         time: new BN(result.receipt.blockNumber)
-      });
    });
 
    it('should not burn tokens if user has not enough tokens', async () => {
-      await expectRevert(
-          burnContract.burn(accounts[0], claimContract.address, new BN(InitialBalanceSourceContract + 1), RequiredStakeWei, {
-             from: accounts[0],
-             value: RequiredStakeWei
-      }), 'ERC20: burn amount exceeds balance');
+      await expectRevert(burnContract.burn(accounts[0], claimContract.address, new BN(InitialBalanceSourceContract + 1)), 'ERC20: burn amount exceeds balance');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });
 
    it('should not burn tokens if destination chain is zero address', async () => {
-      await expectRevert(burnContract.burn(accounts[0], constants.ZERO_ADDRESS, new BN(1), RequiredStakeWei, {
-         from: accounts[0],
-         value: RequiredStakeWei
-      }), 'claim contract address is not registered');
+      await expectRevert(burnContract.burn(accounts[0], constants.ZERO_ADDRESS, new BN(1)), 'claim contract address is not registered');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });
 
    it('should not burn tokens if destination chain does not exist', async () => {
-      await expectRevert(burnContract.burn(accounts[0], burnContract.address, new BN(1), RequiredStakeWei, {
-         from: accounts[0],
-         value: RequiredStakeWei
-      }), 'claim contract address is not registered');
+      await expectRevert(burnContract.burn(accounts[0], burnContract.address, new BN(1)), 'claim contract address is not registered');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });
 
    it('should not burn tokens if recipient is zero address', async () => {
-      await expectRevert(burnContract.burn(constants.ZERO_ADDRESS, burnContract.address, new BN(1), RequiredStakeWei, {
-         from: accounts[0],
-         value: RequiredStakeWei
-      }), 'recipient address must not be zero address');
+      await expectRevert(burnContract.burn(constants.ZERO_ADDRESS, burnContract.address, new BN(1)), 'recipient address must not be zero address');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });
 
    it('should not burn tokens if the sender\'s balance is too low', async () => {
-      await expectRevert(burnContract.burn(accounts[0], claimContract.address, new BN(11), RequiredStakeWei, {
-         from: accounts[0],
-         value: RequiredStakeWei
-      }), 'sender has not enough tokens');
+      await expectRevert(burnContract.burn(accounts[0], claimContract.address, new BN(11)), 'sender has not enough tokens');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });
 
-   // updated
-   it('burner should claim tokens correctly', async () => {
+   it('burner should claim tokens correctly (within fair claim period)', async () => {
+      await setupContracts(1, 1, false);
+
       const sender = accounts[0];
       const value = 3;
-      const stake = 1;
+      const expectedFee = 1;
       const recipient = accounts[0];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), new BN(stake), {
-         from: sender,
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -147,28 +125,30 @@ contract('BurnClaimConfirm', (accounts) => {
 
       const claimResult = await claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
       expectEvent(claimResult.receipt, 'Claim', {
+         burnTxHash: tx.hash,
          burnContract: burnContract.address,
-         sender: sender,
-         burnTime: new BN(burnResult.receipt.blockNumber)
+         recipient: recipient,
+         feeRecipient: recipient,
+         value: new BN(value - expectedFee),
+         fee: new BN(expectedFee)
       });
 
       let balance;
       balance = await burnContract.balanceOf(sender);
-      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value - stake));
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value));
 
       balance = await claimContract.balanceOf(recipient);
-      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract + value));
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract + value));
    });
 
-   it('other client should claim tokens correctly', async () => {
+   it('burner should claim tokens correctly (after fair claim period elapsed)', async () => {
       const sender = accounts[0];
       const value = 3;
+      const expectedFee = 1;
       const recipient = accounts[0];
-      const claimer = accounts[1];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -182,14 +162,16 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      const claimResult = await claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path, {
-         from: claimer
+      const claimResult = await claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path, {
+         from: sender
       });
       expectEvent(claimResult.receipt, 'Claim', {
+         burnTxHash: tx.hash,
          burnContract: burnContract.address,
-         sender: sender,
-         stakeRecipient: recipient,
-         burnTime: new BN(burnResult.receipt.blockNumber)
+         recipient: recipient,
+         feeRecipient: recipient,
+         value: new BN(value - expectedFee),
+         fee: new BN(expectedFee)
       });
 
       let balance;
@@ -200,14 +182,106 @@ contract('BurnClaimConfirm', (accounts) => {
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract + value));
    });
 
+   it('other client should claim tokens correctly (after fair claim period elapsed)', async () => {
+      const sender = accounts[0];
+      const claimer = accounts[1];
+      const value = 3;
+      const expectedFee = 1;
+      const recipient = accounts[0];
+
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
+      });
+
+      const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
+      const tx                = await web3.eth.getTransaction(burnResult.tx);
+      const txReceipt         = await web3.eth.getTransactionReceipt(burnResult.tx);
+      const rlpHeader         = createRLPHeader(block);
+      const rlpEncodedTx      = createRLPTransaction(tx);
+      const rlpEncodedReceipt = createRLPReceipt(txReceipt);
+
+      const path = RLP.encode(tx.transactionIndex);
+      const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
+      const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
+
+      const claimResult = await claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path, {
+         from: claimer
+      });
+      expectEvent(claimResult.receipt, 'Claim', {
+         burnTxHash: tx.hash,
+         burnContract: burnContract.address,
+         recipient: recipient,
+         feeRecipient: claimer,
+         value: new BN(value - expectedFee),
+         fee: new BN(expectedFee)
+      });
+
+      let balance;
+      balance = await burnContract.balanceOf(sender);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value));
+
+      balance = await claimContract.balanceOf(recipient);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract + value - expectedFee));
+
+      balance = await claimContract.balanceOf(claimer);
+      expect(balance).to.be.bignumber.equal(new BN(expectedFee));
+   });
+
+   it('other client should claim tokens correctly but not receive any fee (within fair claim period)', async () => {
+      await setupContracts(1, 1, false);
+
+      const sender = accounts[0];
+      const claimer = accounts[1];
+      const value = 3;
+      const expectedFee = 1;
+      const recipient = accounts[0];
+
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
+      });
+
+      const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
+      const tx                = await web3.eth.getTransaction(burnResult.tx);
+      const txReceipt         = await web3.eth.getTransactionReceipt(burnResult.tx);
+      const rlpHeader         = createRLPHeader(block);
+      const rlpEncodedTx      = createRLPTransaction(tx);
+      const rlpEncodedReceipt = createRLPReceipt(txReceipt);
+
+      const path = RLP.encode(tx.transactionIndex);
+      const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
+      const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
+
+      const claimResult = await claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path, {
+         from: claimer
+      });
+      expectEvent(claimResult.receipt, 'Claim', {
+         burnTxHash: tx.hash,
+         burnContract: burnContract.address,
+         recipient: recipient,
+         feeRecipient: recipient,
+         value: new BN(value - expectedFee),
+         fee: new BN(expectedFee)
+      });
+
+      let balance;
+      balance = await burnContract.balanceOf(sender);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value));
+
+      balance = await claimContract.balanceOf(recipient);
+      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract + value));
+
+      balance = await claimContract.balanceOf(claimer);
+      expect(balance).to.be.bignumber.equal(new BN(0));  // other client should not have received any fee
+   });
+
+
    it('should not claim tokens if the contract that burnt the tokens does not exist', async () => {
       const sender = accounts[0];
       const value = 3;
       const recipient = accounts[0];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -225,7 +299,7 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      await expectRevert(claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+      await expectRevert(claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
           'contract address is not registered');
 
       let balance;
@@ -241,9 +315,8 @@ contract('BurnClaimConfirm', (accounts) => {
       const value = 3;
       const recipient = accounts[0];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -261,7 +334,7 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      await expectRevert(claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+      await expectRevert(claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
           'burn transaction was not successful');
 
       let balance;
@@ -278,9 +351,8 @@ contract('BurnClaimConfirm', (accounts) => {
       const value = 3;
       const recipient = accounts[0];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -294,7 +366,7 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      await expectRevert(claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+      await expectRevert(claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
           'burn transaction does not exist or has not enough confirmations');
 
       let balance;
@@ -311,9 +383,8 @@ contract('BurnClaimConfirm', (accounts) => {
       const value = 3;
       const recipient = accounts[0];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -327,7 +398,7 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      await expectRevert(claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+      await expectRevert(claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
           'burn receipt does not exist or has not enough confirmations');
 
       let balance;
@@ -341,11 +412,11 @@ contract('BurnClaimConfirm', (accounts) => {
    it('should not allow tokens to be claimed twice', async () => {
       const sender = accounts[0];
       const value = 3;
+      const expectedFee = 1;
       const recipient = accounts[0];
 
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -359,15 +430,17 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      const claimResult = await claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
+      const claimResult = await claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
       expectEvent(claimResult.receipt, 'Claim', {
+         burnTxHash: tx.hash,
          burnContract: burnContract.address,
-         sender: sender,
-         stakeRecipient: recipient,
-         burnTime: new BN(burnResult.receipt.blockNumber)
+         recipient: recipient,
+         feeRecipient: recipient,
+         value: new BN(value - expectedFee),
+         fee: new BN(expectedFee)
       });
 
-      await expectRevert(claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+      await expectRevert(claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
           'tokens have already been claimed');
 
       let balance;
@@ -378,15 +451,14 @@ contract('BurnClaimConfirm', (accounts) => {
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract + value));
    });
 
-   it('should not allow to claim tokens on wrong claim contract', async () => {
+   it('should not allow to claim tokens on wrong destination token contract', async () => {
       const sender = accounts[0];
       const value = 3;
       const recipient = accounts[0];
 
       await burnContract.registerTokenContract(burnContract.address);
-      const burnResult = await burnContract.burn(recipient, burnContract.address, new BN(value), RequiredStakeWei, {
-         from: sender,
-         value: RequiredStakeWei
+      const burnResult = await burnContract.burn(recipient, burnContract.address, new BN(value), {
+         from: sender
       });
 
       const block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
@@ -400,8 +472,8 @@ contract('BurnClaimConfirm', (accounts) => {
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
-      await expectRevert(claimContract.claim(sender, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
-          'this contract has not been specified as claim contract');
+      await expectRevert(claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path),
+          'this contract has not been specified as destination token contract');
 
       let balance;
       balance = await burnContract.balanceOf(accounts[0]);
@@ -409,59 +481,6 @@ contract('BurnClaimConfirm', (accounts) => {
 
       balance = await claimContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract));
-   });
-
-   // TODO
-   it('should confirm claim tx and correctly transfer stake to sender (fair confirm period has not elapsed)', async () => {
-      await setupContracts(1, 1, false);
-
-      const sender = accounts[0];
-      const value = 3;
-      const stake = 1;
-      const recipient = accounts[0];
-
-      const burnResult = await burnContract.burn(recipient, claimContract.address, new BN(value), new BN(stake), {
-         from: sender,
-      });
-
-      let block             = await web3.eth.getBlock(burnResult.receipt.blockHash);
-      let tx                = await web3.eth.getTransaction(burnResult.tx);
-      let txReceipt         = await web3.eth.getTransactionReceipt(burnResult.tx);
-      let rlpHeader         = createRLPHeader(block);
-      let rlpEncodedTx      = createRLPTransaction(tx);
-      let rlpEncodedReceipt = createRLPReceipt(txReceipt);
-
-      let path = RLP.encode(tx.transactionIndex);
-      let rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
-      let rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
-
-      const claimResult = await claimContract.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
-      block             = await web3.eth.getBlock(claimResult.receipt.blockHash);
-      tx                = await web3.eth.getTransaction(claimResult.tx);
-      txReceipt         = await web3.eth.getTransactionReceipt(claimResult.tx);
-      rlpHeader         = createRLPHeader(block);
-      rlpEncodedTx      = createRLPTransaction(tx);
-      rlpEncodedReceipt = createRLPReceipt(txReceipt);
-      path = RLP.encode(tx.transactionIndex);
-      rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
-      rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
-
-      const confirmResult = await burnContract.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path, {
-         from: sender
-      });
-
-      // expectEvent(confirmResult.receipt, 'Confirm1', {
-      //    claimContract: claimContract.address
-      // });
-
-      // const balanceAfterConfirm = await balance.current(sender);
-      // expect(balanceBeforeConfirm.sub(new BN(RequiredStakeWei))).to.be.bignumber.equal(balanceAfterConfirm);
-      // let balance;
-      let balance = await burnContract.balanceOf(sender);
-      expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract - value));
-      //
-      // balance = await claimContract.balanceOf(accounts[0]);
-      // expect(balance).to.be.bignumber.equal(new BN(InitialBalanceDestinationContract));
    });
 
    const createTxMerkleProof = async (block, transactionIndex) => {

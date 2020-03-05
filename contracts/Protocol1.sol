@@ -4,7 +4,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
 import "solidity-rlp/contracts/RLPReader.sol";
 import "./TxInclusionVerifier.sol";
 
-contract BurnClaim is ERC20 {
+contract Protocol1 is ERC20 {
     using RLPReader for RLPReader.RLPItem;
     using RLPReader for bytes;
 

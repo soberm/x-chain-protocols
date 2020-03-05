@@ -1,4 +1,4 @@
-const TokenContract = artifacts.require('BurnClaim');
+const TokenContract = artifacts.require('Protocol1');
 const TxInclusionVerifier = artifacts.require('MockedTxInclusionVerifier');
 
 module.exports = async function(deployer, network) {

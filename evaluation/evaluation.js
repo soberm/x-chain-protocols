@@ -10,7 +10,7 @@ const {
 const RLP = require('rlp');
 const fs = require('fs');
 
-const TokenContract = artifacts.require('BurnClaimConfirm');
+const TokenContract = artifacts.require('Protocol2');
 const TxInclusionVerifier = artifacts.require('MockedTxInclusionVerifier');
 
 const InitialBalanceBurnContract = 1000000000;
