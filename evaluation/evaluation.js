@@ -12,12 +12,13 @@ const Web3 = require('web3');
 
 const ropsten = {
    name: 'Ropsten',
-   url: 'wss://ropsten.infura.io/ws/v3/<project-ID>',
+   url: 'wss://ropsten.infura.io/ws/v3/<projectID>',
    chainId: 3,
    account: {
       address: '0xEE4Fd3b858A2560caeb3a42Db552707928d07E52',
       privateKey: '<privateKey>'
    },
+   confirmations: 5,
    web3: undefined,
    contracts: {
       txVerifier: {
@@ -37,12 +38,13 @@ const ropsten = {
 
 const rinkeby = {
    name: 'Rinkeby',
-   url: 'wss://rinkeby.infura.io/ws/v3/<project-ID>',
+   url: 'wss://rinkeby.infura.io/ws/v3/<projectID>',
    chainId: 4,
    account: {
        address: '0x3aE25CA7B8198150f956af99A87372327c0E9f13',
        privateKey: '<privateKey>'
    },
+   confirmations: 5,
    web3: undefined,
    contracts: {
       txVerifier: {
@@ -119,12 +121,32 @@ async function startEvaluation() {
    console.log(`+++ Starting evaluation +++`);
 
    const fd = fs.openSync(`./evaluation/results.csv`, "w");
-   fs.writeSync(fd, "run,gas_burn,gas_claim,gas_confirm\n");
+   fs.writeSync(fd, "run,burn_gas,claim_gas,confirm_gas,burn_incTime,burn_confTime,claim_incTime,claim_confTime,confirm_incTime,confirm_confTime\n");
 
    for (let run = 1; run <= 1; run++) {
-      const burnReceipt = await burn(rinkeby, ropsten.account.address, ropsten.contracts.protocol.address, 1, 0);
-      const gasConsBurn = burnReceipt.gasUsed;
+      let result = {
+         burn: {},
+         claim: {},
+         confirm: {}
+      };
+      console.log('Run:', run);
 
+      // submit burn transaction
+      let startTime = new Date().getTime();
+      const burnReceipt = await burn(rinkeby, ropsten.account.address, ropsten.contracts.protocol.address, 1, 0);
+      let endTime = new Date().getTime();
+      result.burn.inclusionTime = (endTime - startTime) / 1000;  // diff in seconds
+
+      console.log('wait for confirmation of burn tx ...');
+      startTime = new Date().getTime();
+      await waitUntilConfirmed(rinkeby, burnReceipt.transactionHash, rinkeby.confirmations);
+      endTime = new Date().getTime();
+      result.burn.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
+      console.log('burn tx is confirmed');
+      result.burn.gasConsumption = burnReceipt.gasUsed;
+
+
+      // submit claim transaction
       let block             = await rinkeby.web3.eth.getBlock(burnReceipt.blockHash);
       let tx                = await rinkeby.web3.eth.getTransaction(burnReceipt.transactionHash);
       let txReceipt         = await rinkeby.web3.eth.getTransactionReceipt(burnReceipt.transactionHash);
@@ -135,9 +157,21 @@ async function startEvaluation() {
       let rlpEncodedTxNodes = await createTxMerkleProof(rinkeby, block, tx.transactionIndex);
       let rlpEncodedReceiptNodes = await createReceiptMerkleProof(rinkeby, block, tx.transactionIndex);
 
+      startTime = new Date().getTime();
       const claimReceipt = await claim(ropsten, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
-      const gasConsClaim = claimReceipt.gasUsed;
+      endTime = new Date().getTime();
+      result.claim.inclusionTime = (endTime - startTime) / 1000;  // diff in seconds
 
+      console.log('wait for confirmation of claim tx ...');
+      startTime = new Date().getTime();
+      await waitUntilConfirmed(ropsten, claimReceipt.transactionHash, ropsten.confirmations);
+      endTime = new Date().getTime();
+      result.claim.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
+      console.log('claim tx is confirmed');
+      result.claim.gasConsumption = claimReceipt.gasUsed;
+
+
+      // submit confirm transaction
       block             = await ropsten.web3.eth.getBlock(claimReceipt.blockHash);
       tx                = await ropsten.web3.eth.getTransaction(claimReceipt.transactionHash);
       txReceipt         = await ropsten.web3.eth.getTransactionReceipt(claimReceipt.transactionHash);
@@ -148,11 +182,21 @@ async function startEvaluation() {
       rlpEncodedTxNodes = await createTxMerkleProof(ropsten, block, tx.transactionIndex);
       rlpEncodedReceiptNodes = await createReceiptMerkleProof(ropsten, block, tx.transactionIndex);
 
+      startTime = new Date().getTime();
       const confirmReceipt = await confirm(rinkeby, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
-      const gasConsConfirm = confirmReceipt.gasUsed;
+      endTime = new Date().getTime();
+      result.confirm.inclusionTime = (endTime - startTime) / 1000;  // diff in seconds
 
-      console.log(`${run}: ${gasConsBurn},${gasConsClaim},${gasConsConfirm}`);
-      fs.writeSync(fd, `${run},${gasConsBurn},${gasConsClaim},${gasConsConfirm}\n`);
+      console.log('wait for confirmation of confirm tx ...');
+      startTime = new Date().getTime();
+      await waitUntilConfirmed(rinkeby, confirmReceipt.transactionHash, rinkeby.confirmations);
+      endTime = new Date().getTime();
+      result.confirm.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
+      console.log('confirm tx is confirmed');
+      result.confirm.gasConsumption = confirmReceipt.gasUsed;
+
+      console.log(`${run}: ${result.burn.gasConsumption},${result.claim.gasConsumption},${result.confirm.gasConsumption},${result.burn.inclusionTime},${result.burn.confirmationTime},${result.claim.inclusionTime},${result.claim.confirmationTime},${result.confirm.inclusionTime},${result.confirm.confirmationTime}`);
+      fs.writeSync(fd, `${run},${result.burn.gasConsumption},${result.claim.gasConsumption},${result.confirm.gasConsumption},${result.burn.inclusionTime},${result.burn.confirmationTime},${result.claim.inclusionTime},${result.claim.confirmationTime},${result.confirm.inclusionTime},${result.confirm.confirmationTime}\n`);
    }
 
    fs.closeSync(fd);
@@ -160,7 +204,7 @@ async function startEvaluation() {
 }
 
 function initNetwork(network) {
-   network.web3 = new Web3(new Web3.providers.WebsocketProvider(network.url), null, options);
+   network.web3 = new Web3(new Web3.providers.WebsocketProvider(network.url));
 
    // create contract object for TxInclusionVerifier
    let jsonFileContent = fs.readFileSync('./build/contracts/MockedTxInclusionVerifier.json');
@@ -264,6 +308,25 @@ async function deployContract(network, contract, constructorArguments) {
        });
 
    return txReceipt;
+}
+
+async function waitUntilConfirmed(network, txHash, confirmations) {
+   while (true) {
+      let receipt = await network.web3.eth.getTransactionReceipt(txHash);
+      if (receipt !== null) {
+         let mostRecentBlockNumber = await network.web3.eth.getBlockNumber();
+         if (receipt.blockNumber + confirmations <= mostRecentBlockNumber) {
+            // receipt != null -> tx is part of main chain
+            // and block containing tx has at least confirmations successors
+            break;
+         }
+      }
+      sleep(1500);
+   }
+}
+
+function sleep(ms) {
+   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 const createTxMerkleProof = async (network, block, transactionIndex) => {
