@@ -33,7 +33,7 @@ contract Protocol2 is ERC20 {
     uint chainIdentifier;
     mapping(address => bool) participatingTokenContracts;  // addresses of the token contracts living on other blockchains
     uint TRANSFER_FEE = 10;  // 1/10 of the transfer amount
-    uint constant REQUIRED_STAKE = 1;
+    uint constant REQUIRED_STAKE = 0;
     uint8 constant REQUIRED_TX_CONFIRMATIONS = 10;  // number of blocks that have to follow the block containing a tx to consider it confirmed
     uint constant FAIR_CLAIM_PERIOD = 20;  // Number of blocks that must follow the block containing the burn tx.
                                            // Posting a claim within this period results in transferring the fees to the burner.
