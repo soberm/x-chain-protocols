@@ -54,7 +54,7 @@ const createRLPHeaderWithoutNonce = (block) => {
     ]);
 };
 
-const createRLPTransaction = (tx) => {
+const createRLPTransaction = (tx, chainId) => {
     const txData = {
       nonce: tx.nonce,
       gasPrice: web3.utils.toHex(new BN(tx.gasPrice)),
@@ -66,7 +66,7 @@ const createRLPTransaction = (tx) => {
       r: tx.r,
       s: tx.s
     };
-    const transaction = new Transaction(txData);
+    const transaction = new Transaction(txData, { chain: chainId });
     return transaction.serialize();
 };
 
