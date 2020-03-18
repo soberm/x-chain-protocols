@@ -1,4 +1,5 @@
 const fs = require('fs');
+const { createRLPHeader } = require('../utils');
 const { initNetwork, callContract } = require('./common');
 const config = require('./config');
 
@@ -15,15 +16,28 @@ module.exports = async function(callback) {
 async function setUpContracts() {
    console.log('Deploy contracts ...');
 
-   // setup Rinkeby
    let rinkebyNetworkInstance = initNetwork(config.rinkeby);
+   let ropstenNetworkInstance = initNetwork(config.ropsten);
+
+   // setup Rinkeby
    let receipt = await deployContract(
        config.rinkeby,
        rinkebyNetworkInstance.web3,
+       rinkebyNetworkInstance.contracts.ethash,
+       []
+   );
+   config.rinkeby.contracts.ethash.address = receipt.contractAddress;
+
+   let mostRecentBlock = await ropstenNetworkInstance.web3.eth.getBlock('latest');
+   let rlpHeader = createRLPHeader(mostRecentBlock);
+   receipt = await deployContract(
+       config.rinkeby,
+       rinkebyNetworkInstance.web3,
        rinkebyNetworkInstance.contracts.txVerifier,
-       [1, 1, true]
+       [rlpHeader, mostRecentBlock.totalDifficulty, config.rinkeby.contracts.ethash.address]
    );
    config.rinkeby.contracts.txVerifier.address = receipt.contractAddress;
+   config.rinkeby.contracts.txVerifier.genesisBlock = mostRecentBlock.number;
 
    receipt = await deployContract(
        config.rinkeby,
@@ -34,14 +48,24 @@ async function setUpContracts() {
    config.rinkeby.contracts.protocol.address = receipt.contractAddress;
 
    // setup Ropsten
-   let ropstenNetworkInstance = initNetwork(config.ropsten);
+   receipt = await deployContract(
+       config.ropsten,
+       ropstenNetworkInstance.web3,
+       ropstenNetworkInstance.contracts.ethash,
+       []
+   );
+   config.ropsten.contracts.ethash.address = receipt.contractAddress;
+
+   mostRecentBlock = await rinkebyNetworkInstance.web3.eth.getBlock('latest');
+   rlpHeader = createRLPHeader(mostRecentBlock);
    receipt = await deployContract(
        config.ropsten,
        ropstenNetworkInstance.web3,
        ropstenNetworkInstance.contracts.txVerifier,
-       [1, 1, true]
+       [rlpHeader, mostRecentBlock.totalDifficulty, config.ropsten.contracts.ethash.address]
    );
    config.ropsten.contracts.txVerifier.address = receipt.contractAddress;
+   config.ropsten.contracts.txVerifier.genesisBlock = mostRecentBlock.number;
 
    receipt = await deployContract(
        config.ropsten,
@@ -78,17 +102,19 @@ async function deployContract(networkConfig, web3, contract, constructorArgument
       chainId: networkConfig.chainId
    };
    let signedTx = await web3.eth.accounts.signTransaction(tx, networkConfig.account.privateKey);
-   let txReceipt;
-   await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction)
-       .on("receipt", receipt => {
-          console.log('Transaction Hash:', receipt.transactionHash);
-          console.log('Contract Address:', receipt.contractAddress);
-          txReceipt = receipt;
-       })
-       .on("error", err => {
-          console.log(err);
-       });
-
+   let txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
+   console.log('Transaction Hash:', txReceipt.transactionHash);
+   console.log('Contract Address:', txReceipt.contractAddress);
+   // try {
+   //    txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
+   //    console.log('Transaction Hash:', txReceipt.transactionHash);
+   //    console.log('Contract Address:', txReceipt.contractAddress);
+   // } catch (e) {
+   //    console.log(e);
+   //    txReceipt = await web3.eth.getTransactionReceipt(signedTx.transactionHash);
+   // }
+   // console.log("Return:");
+   // console.log(txReceipt);
    return txReceipt;
 }
 

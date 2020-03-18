@@ -8,7 +8,7 @@ const {
 } = require('../utils');
 const RLP = require('rlp');
 const fs = require('fs');
-const { initNetwork, callContract } = require('./common');
+const { initNetwork, callContract, sleep } = require('./common');
 const config = require('./config');  // conten of config.json
 
 
@@ -149,10 +149,6 @@ async function waitUntilConfirmed(web3, txHash, confirmations) {
         }
         sleep(1500);
     }
-}
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 const createTxMerkleProof = async (web3, chainId, block, transactionIndex) => {

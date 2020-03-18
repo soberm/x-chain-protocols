@@ -9,15 +9,21 @@
     },
     "confirmations": 1,
     "contracts": {
+      "ethash": {
+        "name": "Ethash",
+        "file": "../testimonium/build/contracts/Ethash.json",
+        "address": "0x9Bd0e3788bBeD96E82d887b526DADb5B88281bbB"
+      },
       "txVerifier": {
-        "name": "MockedTxInclusionVerifier",
-        "file": "./build/contracts/MockedTxInclusionVerifier.json",
-        "address": "0xccC4cfe69f1Eb45BD71FDf0c45b4ee26A84d7adc"
+        "name": "Testimonium",
+        "file": "../testimonium/build/contracts/Testimonium.json",
+        "address": "0x49d5769D09fb69ae0f26A0c2CC0620dB690842d0",
+        "genesisBlock": 7542910
       },
       "protocol": {
         "name": "Protocol",
         "file": "./build/contracts/Protocol2.json",
-        "address": "0xA4587CF8d8e4d208CdFC1fF94136a3a7C9c66C0d"
+        "address": "0x3f7cc8E08Dbaa2dE78A20b5Bcf8A460FF774eF4F"
       }
     }
   },
@@ -31,15 +37,21 @@
     },
     "confirmations": 1,
     "contracts": {
+      "ethash": {
+        "name": "Ethash",
+        "file": "../testimonium/build/contracts/Ethash.json",
+        "address": "0xA56Ac434C1da3795b56f52a9bDD176b57e822D3B"
+      },
       "txVerifier": {
-        "name": "MockedTxInclusionVerifier",
-        "file": "./build/contracts/MockedTxInclusionVerifier.json",
-        "address": "0x67DD5Df6f3C49272a64337B61d8cCBBbb8dE893C"
+        "name": "Testimonium",
+        "file": "../testimonium/build/contracts/Testimonium.json",
+        "address": "0xAf8986D8FE465Bd349a82fbDEF9e3f073fFa362a",
+        "genesisBlock": 6158858
       },
       "protocol": {
         "name": "Protocol",
         "file": "./build/contracts/Protocol2.json",
-        "address": "0xf5252928687376e3d593cc528AE073FAa3073dCf"
+        "address": "0x5B01b1F532f6795327c78b98a964C00Dc2E45E55"
       }
     }
   }

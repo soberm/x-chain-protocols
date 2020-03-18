@@ -4,11 +4,27 @@ const Web3 = require('web3');
 const initNetwork = (networkConfig) => {
     const web3 = new Web3(new Web3.providers.WebsocketProvider(networkConfig.url));
 
-    // create contract object for TxInclusionVerifier
-    let jsonFileContent = fs.readFileSync(networkConfig.contracts.txVerifier.file);
+    // create contract object for Ethash
+    let jsonFileContent = fs.readFileSync(networkConfig.contracts.ethash.file);
     let parsedJson = JSON.parse(jsonFileContent);
+    const ethashBytecode = parsedJson.bytecode;
+    const ethashInstance = new web3.eth.Contract(parsedJson.abi);
+    if (networkConfig.contracts.ethash.address !== undefined && networkConfig.contracts.ethash.address !== '') {
+        ethashInstance.options.address = networkConfig.contracts.ethash.address;
+    }
+    const ethashName = networkConfig.contracts.ethash.file.substring(
+        networkConfig.contracts.ethash.file.lastIndexOf("/") + 1,
+        networkConfig.contracts.ethash.file.lastIndexOf(".")
+    );
+
+    // create contract object for TxInclusionVerifier
+    jsonFileContent = fs.readFileSync(networkConfig.contracts.txVerifier.file);
+    parsedJson = JSON.parse(jsonFileContent);
     const txVerifierBytecode = parsedJson.bytecode;
     const txVerifierInstance = new web3.eth.Contract(parsedJson.abi);
+    if (networkConfig.contracts.txVerifier.address !== undefined && networkConfig.contracts.txVerifier.address !== '') {
+        txVerifierInstance.options.address = networkConfig.contracts.txVerifier.address;
+    }
     const txVerifierName = networkConfig.contracts.txVerifier.file.substring(
         networkConfig.contracts.txVerifier.file.lastIndexOf("/") + 1,
         networkConfig.contracts.txVerifier.file.lastIndexOf(".")
@@ -19,6 +35,9 @@ const initNetwork = (networkConfig) => {
     parsedJson = JSON.parse(jsonFileContent);
     const protocolBytecode = parsedJson.bytecode;
     const protocolInstance = new web3.eth.Contract(parsedJson.abi);
+    if (networkConfig.contracts.protocol.address !== undefined && networkConfig.contracts.protocol.address !== '') {
+        protocolInstance.options.address = networkConfig.contracts.protocol.address;
+    }
     const protocolName = networkConfig.contracts.protocol.file.substring(
         networkConfig.contracts.protocol.file.lastIndexOf("/") + 1,
         networkConfig.contracts.protocol.file.lastIndexOf(".")
@@ -27,6 +46,11 @@ const initNetwork = (networkConfig) => {
     return {
         web3: web3,
         contracts: {
+            ethash: {
+                name: ethashName,
+                bytecode: ethashBytecode,
+                instance: ethashInstance
+            },
             txVerifier: {
                 name: txVerifierName,
                 bytecode: txVerifierBytecode,
@@ -69,7 +93,12 @@ const callContract = async (networkConfig, web3, contractAddr, method) => {
     return txReceipt;
 };
 
+const sleep = (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+};
+
 module.exports = {
     initNetwork,
-    callContract
+    callContract,
+    sleep
 };
