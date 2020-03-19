@@ -5,10 +5,29 @@ const config = require('./config');
 
 module.exports = async function(callback) {
    try {
+      let sourceNetworkName = process.argv[4];
+      let sourceNetworkConfig;
+      let sourceNetworkInstance;
+      let destinationNetworkConfig;
+      let destinationNetworkInstance;
       let rinkebyNetworkInstance = initNetwork(config.rinkeby);
       let ropstenNetworkInstance = initNetwork(config.ropsten);
-      // await relayHeaders(config.ropsten, ropstenNetworkInstance, config.rinkeby, rinkebyNetworkInstance);
-      await relayHeaders(config.rinkeby, rinkebyNetworkInstance, config.ropsten, ropstenNetworkInstance);
+
+      if (sourceNetworkName === 'rinkeby') {
+         sourceNetworkConfig = config.rinkeby;
+         sourceNetworkInstance = rinkebyNetworkInstance;
+         destinationNetworkConfig = config.ropsten;
+         destinationNetworkInstance = ropstenNetworkInstance;
+      }
+      else {
+         sourceNetworkConfig = config.ropsten;
+         sourceNetworkInstance = ropstenNetworkInstance;
+         destinationNetworkConfig = config.rinkeby;
+         destinationNetworkInstance = rinkebyNetworkInstance;
+      }
+
+      await relayHeaders(sourceNetworkConfig, sourceNetworkInstance, destinationNetworkConfig, destinationNetworkInstance);
+      // await relayHeaders(config.rinkeby, rinkebyNetworkInstance, config.ropsten, ropstenNetworkInstance);
       callback();
    } catch (err) {
       callback(err);
@@ -23,7 +42,6 @@ async function relayHeaders(sourceNetworkConfig, sourceNetworkInstance, destinat
    let nextBlockNr = mostRecentBlock.number + 1;
 
    while(true) {
-   // for (let i = 0; i < 10; i++) {
       console.log('Relay block', nextBlockNr);
 
       let nextBlock = await sourceNetworkInstance.web3.eth.getBlock(nextBlockNr);
