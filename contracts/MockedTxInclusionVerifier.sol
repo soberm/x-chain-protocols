@@ -33,7 +33,7 @@ contract MockedTxInclusionVerifier is TxInclusionVerifier {
 
     function verifyState(uint feeInWei, bytes memory rlpHeader, uint8 noOfConfirmations, bytes memory rlpEncodedState,
         bytes memory path, bytes memory rlpEncodedNodes) payable public returns (uint8) {
-        return 1;
+        return 0;
     }
 
 }
