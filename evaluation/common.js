@@ -2,7 +2,8 @@ const fs = require('fs');
 const Web3 = require('web3');
 
 const initNetwork = (networkConfig) => {
-    const web3 = new Web3(new Web3.providers.WebsocketProvider(networkConfig.url));
+    // const web3 = new Web3(new Web3.providers.WebsocketProvider(networkConfig.url));
+    const web3 = new Web3(networkConfig.url);
 
     // create contract object for Ethash
     let jsonFileContent = fs.readFileSync(networkConfig.contracts.ethash.file);
@@ -65,30 +66,24 @@ const initNetwork = (networkConfig) => {
     }
 };
 
-const callContract = async (networkConfig, web3, contractAddr, method) => {
+const callContract = async (networkConfig, account, web3, contractAddr, method) => {
     console.log('Call function', method._method.name, 'on', networkConfig.name);
 
-    let txCount = await web3.eth.getTransactionCount(networkConfig.account.address);
+    let medianGasPrice = parseInt(await web3.eth.getGasPrice());
+    let txCount = await web3.eth.getTransactionCount(account.address);
     let tx = {
-        from: networkConfig.account.address,
+        from: account.address,
         to: contractAddr,
-        gasLimit: 1000000,
-        gasPrice: web3.utils.toHex(await web3.eth.getGasPrice()),
+        gasLimit: 7000000,
+        gasPrice: web3.utils.toHex(Math.ceil( medianGasPrice * 1.5)),
         nonce: web3.utils.toHex(txCount),
         value: '0x0',
         data: method.encodeABI(),
         chainId: networkConfig.chainId
     };
-    let signedTx = await web3.eth.accounts.signTransaction(tx, networkConfig.account.privateKey);
-    let txReceipt = undefined;
-    await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction)
-        .on("receipt", receipt => {
-            console.log('Transaction Hash:', receipt.transactionHash);
-            txReceipt = receipt;
-        })
-        .on("error", err => {
-            console.log(err);
-        });
+    let signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
+    let txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
+    console.log('Transaction Hash:', txReceipt.transactionHash);
 
     return txReceipt;
 };
@@ -97,8 +92,26 @@ const sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
 };
 
+/**
+ * @returns the hash of the most recent block of the main chain stored within the relay running on the specified blockchain.
+ */
+const getMostRecentBlockHash = async (relayContract) =>  {
+    return await relayContract.instance.methods.longestChainEndpoint().call();
+};
+
+const getHeaderInfo = async (relayContract, blockHash) => {
+    return await relayContract.instance.methods.getHeader(blockHash).call();
+};
+
+const isHeaderStored = async (relayContract, blockHash) => {
+    return await relayContract.instance.methods.isHeaderStored(blockHash).call();
+};
+
 module.exports = {
     initNetwork,
     callContract,
-    sleep
+    sleep,
+    getMostRecentBlockHash,
+    getHeaderInfo,
+    isHeaderStored
 };

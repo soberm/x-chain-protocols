@@ -72,10 +72,10 @@ const createRLPTransaction = (tx, chainId) => {
 
 const createRLPReceipt = (receipt) => {
     return RLP.encode([
-        receipt.gasUsed,
+        receipt.status ? 1 : 0,  // convert boolean to binary
+        receipt.cumulativeGasUsed,
         receipt.logsBloom,
-        convertLogs(receipt.logs),
-        receipt.status ? RLP_TRUE : RLP_FALSE  // convert boolean to binary
+        convertLogs(receipt.logs)
     ]);
 };
 

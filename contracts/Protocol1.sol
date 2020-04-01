@@ -70,16 +70,16 @@ contract Protocol1 is ERC20 {
 
         // verify inclusion of burn transaction
         uint txExists = txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedTx, path, rlpMerkleProofTx);
-        require(txExists == 1, "burn transaction does not exist or has not enough confirmations");
+        require(txExists == 0, "burn transaction does not exist or has not enough confirmations");
 
         // verify inclusion of receipt
         uint receiptExists = txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedReceipt, path, rlpMerkleProofReceipt);
-        require(receiptExists == 1, "burn receipt does not exist or has not enough confirmations");
+        require(receiptExists == 0, "burn receipt does not exist or has not enough confirmations");
 
         uint fee = calculateFee(c.value, TRANSFER_FEE);
         uint remainingValue = c.value - fee;
         address feeRecipient = c.recipient;
-        if (msg.sender != c.recipient && txInclusionVerifier.isBlockConfirmed(keccak256(rlpHeader), FAIR_CLAIM_PERIOD)) {
+        if (msg.sender != c.recipient && txInclusionVerifier.isBlockConfirmed(0, keccak256(rlpHeader), FAIR_CLAIM_PERIOD)) {
             // other client wants to claim fees
             // fair claim period has elapsed -> fees go to msg.sender
             feeRecipient = msg.sender;
@@ -102,10 +102,10 @@ contract Protocol1 is ERC20 {
 
         // parse receipt
         RLPReader.RLPItem[] memory receipt = rlpReceipt.toRlpItem().toList();
-        c.isBurnValid = receipt[3].toBoolean();
+        c.isBurnValid = receipt[0].toBoolean();
 
         // read logs
-        RLPReader.RLPItem[] memory logs = receipt[2].toList();
+        RLPReader.RLPItem[] memory logs = receipt[3].toList();
         RLPReader.RLPItem[] memory burnEventTuple = logs[1].toList();  // logs[0] contains the transfer event emitted by the ECR20 method _burn
                                                                        // logs[1] contains the burn event emitted by the method burn (this contract)
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields

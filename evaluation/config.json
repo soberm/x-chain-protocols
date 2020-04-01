@@ -1,57 +1,69 @@
 {
   "rinkeby": {
     "name": "Rinkeby",
-    "url": "wss://rinkeby.infura.io/ws/v3/",
+    "url": "https://rinkeby.infura.io/v3/<project-ID>",
     "chainId": 4,
-    "account": {
-      "address": "0x3aE25CA7B8198150f956af99A87372327c0E9f13",
-      "privateKey": ""
+    "accounts": {
+      "submitter": {
+        "address": "0x62e87fe2FF6fb32b849aa8e80b7a7dE8d220219D",
+        "privateKey": ""
+      },
+      "user": {
+        "address": "0x3aE25CA7B8198150f956af99A87372327c0E9f13",
+        "privateKey": ""
+      }
     },
-    "confirmations": 1,
+    "confirmations": 5,
     "contracts": {
       "ethash": {
         "name": "Ethash",
         "file": "../testimonium/build/contracts/Ethash.json",
-        "address": "0x9Bd0e3788bBeD96E82d887b526DADb5B88281bbB"
+        "address": "0x3E50685B744b7c77A4d46177CeABcD60e84C42b6"
       },
       "txVerifier": {
         "name": "Testimonium",
         "file": "../testimonium/build/contracts/Testimonium.json",
-        "address": "0x49d5769D09fb69ae0f26A0c2CC0620dB690842d0",
-        "genesisBlock": 7542910
+        "address": "0x632237A203e586620dEf45210A7C541B1aAD4bF0",
+        "genesisBlock": 7573521
       },
       "protocol": {
         "name": "Protocol",
         "file": "./build/contracts/Protocol2.json",
-        "address": "0x3f7cc8E08Dbaa2dE78A20b5Bcf8A460FF774eF4F"
+        "address": "0x17e225Fb242F5359915583B760808AAE4B1c5623"
       }
     }
   },
   "ropsten": {
     "name": "Ropsten",
-    "url": "wss://ropsten.infura.io/ws/v3/",
+    "url": "https://ropsten.infura.io/v3/<project-ID>",
     "chainId": 3,
-    "account": {
-      "address": "0xEE4Fd3b858A2560caeb3a42Db552707928d07E52",
-      "privateKey": ""
+    "accounts": {
+      "submitter": {
+        "address": "0xE7c7B15185afFAB0dBF5c2a6e76D64459a00088C",
+        "privateKey": ""
+      },
+      "user": {
+        "address": "0xEE4Fd3b858A2560caeb3a42Db552707928d07E52",
+        "privateKey": ""
+      }
     },
-    "confirmations": 1,
+    "confirmations": 5,
     "contracts": {
       "ethash": {
         "name": "Ethash",
         "file": "../testimonium/build/contracts/Ethash.json",
-        "address": "0xA56Ac434C1da3795b56f52a9bDD176b57e822D3B"
+        "address": "0x15B3CcC82505Bd4E42DB0Ba2672767e86A984ef5"
       },
       "txVerifier": {
         "name": "Testimonium",
         "file": "../testimonium/build/contracts/Testimonium.json",
-        "address": "0xAf8986D8FE465Bd349a82fbDEF9e3f073fFa362a",
-        "genesisBlock": 6158858
+        "address": "0x693C5b6aB8839659AC43e6bAdFe6Afb6F70910f2",
+        "genesisBlock": 6186048
       },
       "protocol": {
         "name": "Protocol",
         "file": "./build/contracts/Protocol2.json",
-        "address": "0x5B01b1F532f6795327c78b98a964C00Dc2E45E55"
+        "address": "0xa2a7d22993259c842C0af0a47779046A5818712b"
       }
     }
   }

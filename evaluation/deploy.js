@@ -29,15 +29,16 @@ async function setUpContracts() {
    config.rinkeby.contracts.ethash.address = receipt.contractAddress;
 
    let mostRecentBlock = await ropstenNetworkInstance.web3.eth.getBlock('latest');
-   let rlpHeader = createRLPHeader(mostRecentBlock);
+   let genesisBlock = await ropstenNetworkInstance.web3.eth.getBlock(mostRecentBlock.number - 10);  // make sure genesis block is confirmed by enough blocks
+   let rlpHeader = createRLPHeader(genesisBlock);
    receipt = await deployContract(
        config.rinkeby,
        rinkebyNetworkInstance.web3,
        rinkebyNetworkInstance.contracts.txVerifier,
-       [rlpHeader, mostRecentBlock.totalDifficulty, config.rinkeby.contracts.ethash.address]
+       [rlpHeader, genesisBlock.totalDifficulty, config.rinkeby.contracts.ethash.address]
    );
    config.rinkeby.contracts.txVerifier.address = receipt.contractAddress;
-   config.rinkeby.contracts.txVerifier.genesisBlock = mostRecentBlock.number;
+   config.rinkeby.contracts.txVerifier.genesisBlock = genesisBlock.number;
 
    receipt = await deployContract(
        config.rinkeby,
@@ -57,15 +58,16 @@ async function setUpContracts() {
    config.ropsten.contracts.ethash.address = receipt.contractAddress;
 
    mostRecentBlock = await rinkebyNetworkInstance.web3.eth.getBlock('latest');
-   rlpHeader = createRLPHeader(mostRecentBlock);
+   genesisBlock = await rinkebyNetworkInstance.web3.eth.getBlock(mostRecentBlock.number - 10);  // make sure genesis block is confirmed by enough blocks
+   rlpHeader = createRLPHeader(genesisBlock);
    receipt = await deployContract(
        config.ropsten,
        ropstenNetworkInstance.web3,
        ropstenNetworkInstance.contracts.txVerifier,
-       [rlpHeader, mostRecentBlock.totalDifficulty, config.ropsten.contracts.ethash.address]
+       [rlpHeader, genesisBlock.totalDifficulty, config.ropsten.contracts.ethash.address]
    );
    config.ropsten.contracts.txVerifier.address = receipt.contractAddress;
-   config.ropsten.contracts.txVerifier.genesisBlock = mostRecentBlock.number;
+   config.ropsten.contracts.txVerifier.genesisBlock = genesisBlock.number;
 
    receipt = await deployContract(
        config.ropsten,
@@ -79,9 +81,7 @@ async function setUpContracts() {
    await registerTokenContract(config.rinkeby, rinkebyNetworkInstance, config.ropsten.contracts.protocol.address);
    await registerTokenContract(config.ropsten, ropstenNetworkInstance, config.rinkeby.contracts.protocol.address);
 
-   // update contract addresses in config.json
-   const jsonString = JSON.stringify(config);
-   fs.writeFileSync('./evaluation/config.json', jsonString);
+   updateConfigJson(config);
    console.log('Deployment completed');
 }
 
@@ -92,37 +92,34 @@ async function deployContract(networkConfig, web3, contract, constructorArgument
       data: contract.bytecode,
       arguments: constructorArguments
    });
-   let txCount = await web3.eth.getTransactionCount(networkConfig.account.address);
+   let txCount = await web3.eth.getTransactionCount(networkConfig.accounts.user.address);
    let tx = {
-      from: networkConfig.account.address,
+      from: networkConfig.accounts.user.address,
       gasLimit: 7000000,
       gasPrice: web3.utils.toHex(await web3.eth.getGasPrice()),
       nonce: txCount,
       data: deployTx.encodeABI(),
       chainId: networkConfig.chainId
    };
-   let signedTx = await web3.eth.accounts.signTransaction(tx, networkConfig.account.privateKey);
+   let signedTx = await web3.eth.accounts.signTransaction(tx, networkConfig.accounts.user.privateKey);
    let txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
    console.log('Transaction Hash:', txReceipt.transactionHash);
    console.log('Contract Address:', txReceipt.contractAddress);
-   // try {
-   //    txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
-   //    console.log('Transaction Hash:', txReceipt.transactionHash);
-   //    console.log('Contract Address:', txReceipt.contractAddress);
-   // } catch (e) {
-   //    console.log(e);
-   //    txReceipt = await web3.eth.getTransactionReceipt(signedTx.transactionHash);
-   // }
-   // console.log("Return:");
-   // console.log(txReceipt);
+
    return txReceipt;
 }
 
 async function registerTokenContract(networkConfig, networkInstance, contractAddrToRegister) {
    return await callContract(
        networkConfig,
+       networkConfig.accounts.user,
        networkInstance.web3,
        networkConfig.contracts.protocol.address,
        networkInstance.contracts.protocol.instance.methods.registerTokenContract(contractAddrToRegister)
    );
+}
+
+function updateConfigJson(config) {
+   const jsonString = JSON.stringify(config);
+   fs.writeFileSync('./evaluation/config.json', jsonString);
 }

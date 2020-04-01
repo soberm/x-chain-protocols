@@ -1,7 +1,7 @@
 pragma solidity ^0.5.13;
 
 contract TxInclusionVerifier {
-    function isBlockConfirmed(bytes32 blockHash, uint requiredConfirmations) public returns (bool);
+    function isBlockConfirmed(uint feeInWei, bytes32 blockHash, uint requiredConfirmations) payable public returns (bool);
 
     function verifyTransaction(uint feeInWei, bytes memory rlpHeader, uint8 noOfConfirmations, bytes memory rlpEncodedTx,
         bytes memory path, bytes memory rlpEncodedNodes) payable public returns (uint8);

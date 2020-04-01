@@ -17,7 +17,7 @@ contract MockedTxInclusionVerifier is TxInclusionVerifier {
         blockConfirmationResult = _blockConfirmationResult;
     }
 
-    function isBlockConfirmed(bytes32 blockHash, uint requiredConfirmations) public returns (bool) {
+    function isBlockConfirmed(uint feeInWei, bytes32 blockHash, uint requiredConfirmations) payable public returns (bool) {
         return blockConfirmationResult;
     }
 
