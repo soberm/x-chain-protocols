@@ -1,7 +1,9 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "solidity-rlp/contracts/RLPReader.sol";
+import "./RLPReader.sol";
 import "./TxInclusionVerifier.sol";
 
 contract Protocol1 is ERC20 {
@@ -26,7 +28,7 @@ contract Protocol1 is ERC20 {
                                            // Posting a claim within this period results in transferring the fees to the burner.
                                            // If the claim is posted after this period, the client submitting the claim gets the fees.
 
-    constructor(address[] memory tokenContracts, address txInclVerifier, uint initialSupply) public {
+    constructor(address[] memory tokenContracts, address txInclVerifier, uint initialSupply) ERC20("TestToken", "TKN") {
         for (uint i = 0; i < tokenContracts.length; i++) {
             participatingTokenContracts[tokenContracts[i]] = true;
         }
@@ -111,8 +113,8 @@ contract Protocol1 is ERC20 {
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields
 
         // read value and recipient from burn event
-        c.recipient = address(burnEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.claimContract = address(burnEventTopics[2].toUint());
+        c.recipient = burnEventTopics[1].toAddress();  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.claimContract = burnEventTopics[2].toAddress();
         c.value = burnEventTopics[3].toUint();
 
         return c;

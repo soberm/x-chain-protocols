@@ -1,7 +1,9 @@
-pragma solidity ^0.5.13;
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.0;
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20Detailed.sol";
-import "solidity-rlp/contracts/RLPReader.sol";
+import "./RLPReader.sol";
 import "./TxInclusionVerifier.sol";
 
 contract Protocol2 is ERC20 {
@@ -40,7 +42,7 @@ contract Protocol2 is ERC20 {
                                            // If the claim is posted after this period, the client submitting the claim gets the fees.
     uint constant FAIR_CONFIRM_PERIOD = 45; // similar to FAIR_CLAIM_PERIOD but intended for confirm tx
 
-    constructor(address[] memory tokenContracts, address txInclVerifier, uint initialSupply) public {
+    constructor(address[] memory tokenContracts, address txInclVerifier, uint initialSupply) ERC20("TestToken", "TKN") {
         for (uint i = 0; i < tokenContracts.length; i++) {
             participatingTokenContracts[tokenContracts[i]] = true;
         }
@@ -162,9 +164,9 @@ contract Protocol2 is ERC20 {
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields
 
         // read value and recipient from burn event
-        c.sender = address(burnEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.recipient = address(burnEventTopics[2].toUint());
-        c.claimContract = address(burnEventTopics[3].toUint());
+        c.sender = burnEventTopics[1].toAddress();  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.recipient = burnEventTopics[2].toAddress();
+        c.claimContract = burnEventTopics[3].toAddress();
         c.value = burnEventTuple[2].toUint();
 
         return c;
@@ -202,8 +204,8 @@ contract Protocol2 is ERC20 {
         RLPReader.RLPItem[] memory claimEventTopics = claimEvent[1].toList();  // topics contain all indexed event fields
 
         // read value from claim event
-        c.burnContract = address(claimEventTopics[1].toUint());  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.sender = address(claimEventTopics[2].toUint());
+        c.burnContract = claimEventTopics[1].toAddress();  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.sender = claimEventTopics[2].toAddress();
         c.burnTime = claimEventTopics[3].toUint();
 
         return c;

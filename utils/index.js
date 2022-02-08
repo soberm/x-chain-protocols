@@ -1,21 +1,11 @@
 const RLP = require('rlp');
 const Web3 = require('web3');
+const {Transaction} = require('ethereumjs-tx');
+const {BaseTrie: Trie} = require('merkle-patricia-tree');
+const {bufArrToArr} = require('ethereumjs-util');
+
 const web3 = new Web3(Web3.givenProvider || 'https://mainnet.infura.io', null, {});
 const BN = web3.utils.BN;
-const {Transaction} = require('ethereumjs-tx');
-const Trie = require('merkle-patricia-tree');
-
-const RLP_TRUE = '0x01';
-const RLP_FALSE = '0x00';
-// const BigNumber = require('bignumber.js');
-
-// const calculateBlockHash = (block) => {
-//     return web3.utils.keccak256(createRLPHeader(block));
-// };
-
-// const addToHex = (hexString, number) => {
-//   return web3.utils.toHex((new BigNumber(hexString).plus(number)));
-// };
 
 const createRLPHeader = (block) => {
     return RLP.encode([
@@ -26,8 +16,8 @@ const createRLPHeader = (block) => {
         block.transactionsRoot,
         block.receiptsRoot,
         block.logsBloom,
-        new BN(block.difficulty),
-        new BN(block.number),
+        BigInt(block.difficulty),
+        BigInt(block.number),
         block.gasLimit,
         block.gasUsed,
         block.timestamp,
@@ -45,8 +35,8 @@ const createRLPHeaderWithoutNonce = (block) => {
         block.transactionsRoot,
         block.receiptsRoot,
         block.logsBloom,
-        new BN(block.difficulty),
-        new BN(block.number),
+        BigInt(block.difficulty),
+        BigInt(block.number),
         block.gasLimit,
         block.gasUsed,
         block.timestamp,
@@ -84,30 +74,16 @@ const newTrie = () => {
 };
 
 const asyncTriePut = (trie, key, value) => {
-    return new Promise((resolve, reject) => {
-        trie.put(key, value, (err) => {
-            if (err != null) reject(err);
-            resolve();
-        });
-    });
+    return trie.put(key, value);
 };
 
-const asyncTrieProve = (trie, key) => {
-    return new Promise((resolve, reject) => {
-        Trie.prove(trie, key, (err, p) => {
-            if (err != null) reject(err);
-            resolve(p)
-        });
-    });
+const asyncTrieProve = async (trie, key) => {
+    const proof = await Trie.createProof(trie, key);
+    return bufArrToArr(proof);
 };
 
 const asyncTrieGet = (trie, key) => {
-    return new Promise((resolve, reject) => {
-        trie.get(key, (err, value) => {
-            if (err != null) reject(err);
-            resolve(value);
-        })
-    })
+    return trie.get(key);
 };
 
 const convertLogs = (logs) => {

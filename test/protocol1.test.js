@@ -3,7 +3,6 @@ const {
     constants,    // Common constants, like the zero address and largest integers
     expectEvent,  // Assertions for emitted events
     expectRevert, // Assertions for transactions that should fail
-    ether,
 } = require('@openzeppelin/test-helpers');
 const {
    asyncTrieProve,
@@ -29,7 +28,7 @@ contract('Protocol1', (accounts) => {
    let txInclusionVerifier;
 
    beforeEach(async () => {
-      await await setupContracts(1, 1, true);
+      await setupContracts(1, 1, true);
    });
 
    const setupContracts = async (verifyTxResult, verifyReceiptResult, blockConfirmationResult) => {
