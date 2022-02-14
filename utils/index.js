@@ -2,13 +2,13 @@ const RLP = require('rlp');
 const Web3 = require('web3');
 const {Transaction} = require('ethereumjs-tx');
 const {BaseTrie: Trie} = require('merkle-patricia-tree');
-const {bufArrToArr} = require('ethereumjs-util');
+const {arrToBufArr} = require('ethereumjs-util');
 
 const web3 = new Web3(Web3.givenProvider || 'https://mainnet.infura.io', null, {});
 const BN = web3.utils.BN;
 
 const createRLPHeader = (block) => {
-    return RLP.encode([
+    return encodeToBuffer([
         block.parentHash,
         block.sha3Uncles,
         block.miner,
@@ -24,23 +24,7 @@ const createRLPHeader = (block) => {
         block.extraData,
         block.mixHash,
         block.nonce,
-    ]);
-};
-const createRLPHeaderWithoutNonce = (block) => {
-    return RLP.encode([
-        block.parentHash,
-        block.sha3Uncles,
-        block.miner,
-        block.stateRoot,
-        block.transactionsRoot,
-        block.receiptsRoot,
-        block.logsBloom,
-        BigInt(block.difficulty),
-        BigInt(block.number),
-        block.gasLimit,
-        block.gasUsed,
-        block.timestamp,
-        block.extraData,
+        // BigInt(block.baseFeePerGas),
     ]);
 };
 
@@ -61,7 +45,7 @@ const createRLPTransaction = (tx, chainId) => {
 };
 
 const createRLPReceipt = (receipt) => {
-    return RLP.encode([
+    return encodeToBuffer([
         receipt.status ? 1 : 0,  // convert boolean to binary
         receipt.cumulativeGasUsed,
         receipt.logsBloom,
@@ -77,36 +61,30 @@ const asyncTriePut = (trie, key, value) => {
     return trie.put(key, value);
 };
 
-const asyncTrieProve = async (trie, key) => {
-    const proof = await Trie.createProof(trie, key);
-    return bufArrToArr(proof);
-};
-
 const asyncTrieGet = (trie, key) => {
     return trie.get(key);
 };
 
 const convertLogs = (logs) => {
-    const convertedLogs = [];
-    for (const log of logs) {
-        convertedLogs.push([
+    return logs.map((log, i) =>
+        [
             log.address,
             log.topics,
-            log.data
-        ]);
-    }
-    return convertedLogs;
+            log.data,
+        ]
+    );
+};
+
+const encodeToBuffer = (input) => {
+    return arrToBufArr(RLP.encode(input));
 };
 
 module.exports = {
-    // calculateBlockHash,
     createRLPHeader,
-    createRLPHeaderWithoutNonce,
     createRLPTransaction,
     createRLPReceipt,
     newTrie,
     asyncTriePut,
     asyncTrieGet,
-    asyncTrieProve
-    // addToHex
+    encodeToBuffer,
 };

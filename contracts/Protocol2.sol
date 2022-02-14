@@ -34,7 +34,7 @@ contract Protocol2 is ERC20 {
     mapping(bytes32 => bool) confirmedClaimTransactions;
     uint chainIdentifier;
     mapping(address => bool) participatingTokenContracts;  // addresses of the token contracts living on other blockchains
-    uint TRANSFER_FEE = 10;  // 1/10 of the transfer amount
+    uint8 constant TRANSFER_FEE = 10;  // 1/10 of the transfer amount
     uint constant REQUIRED_STAKE = 0;
     uint8 constant REQUIRED_TX_CONFIRMATIONS = 5;  // number of blocks that have to follow the block containing a tx to consider it confirmed
     uint constant FAIR_CLAIM_PERIOD = 20;  // Number of blocks that must follow the block containing the burn tx.
@@ -61,7 +61,6 @@ contract Protocol2 is ERC20 {
         require(recipient != address(0), "recipient address must not be zero address");
         require(participatingTokenContracts[claimContract] == true, "claim contract address is not registered");
         require(stake == REQUIRED_STAKE, 'provided stake does not match required stake');
-        require(balanceOf(msg.sender) >= value + stake, 'sender has not enough tokens');
         _burn(msg.sender, value + stake);
         emit Burn(msg.sender, recipient, claimContract, value);
     }
@@ -86,11 +85,11 @@ contract Protocol2 is ERC20 {
 
         // verify inclusion of burn transaction
         uint txExists = txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedTx, path, rlpMerkleProofTx);
-        require(txExists == 0, "burn transaction does not exist or has not enough confirmations");
+        require(txExists == 1, "burn transaction does not exist or has not enough confirmations");
 
         // verify inclusion of receipt
         uint receiptExists = txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedReceipt, path, rlpMerkleProofReceipt);
-        require(receiptExists == 0, "burn receipt does not exist or has not enough confirmations");
+        require(receiptExists == 1, "burn receipt does not exist or has not enough confirmations");
 
         uint fee = calculateFee(c.value, TRANSFER_FEE);
         uint remainingValue = c.value - fee;
@@ -129,11 +128,11 @@ contract Protocol2 is ERC20 {
 
         // verify inclusion of burn transaction
         uint txExists = txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedTx, path, rlpMerkleProofTx);
-        require(txExists == 0, "claim transaction does not exist or has not enough confirmations");
+        require(txExists == 1, "claim transaction does not exist or has not enough confirmations");
 
         // verify inclusion of receipt
         uint receiptExists = txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedReceipt, path, rlpMerkleProofReceipt);
-        require(receiptExists == 0, "claim receipt does not exist or has not enough confirmations");
+        require(receiptExists == 1, "claim receipt does not exist or has not enough confirmations");
 
         confirmedClaimTransactions[txHash] = true; // IMPORTANT: prevent this tx from being used for further claims
 
@@ -164,9 +163,9 @@ contract Protocol2 is ERC20 {
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields
 
         // read value and recipient from burn event
-        c.sender = burnEventTopics[1].toAddress();  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.recipient = burnEventTopics[2].toAddress();
-        c.claimContract = burnEventTopics[3].toAddress();
+        c.sender = address(uint160(burnEventTopics[1].toUint()));  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.recipient = address(uint160(burnEventTopics[2].toUint()));
+        c.claimContract = address(uint160(burnEventTopics[3].toUint()));
         c.value = burnEventTuple[2].toUint();
 
         return c;
@@ -204,8 +203,8 @@ contract Protocol2 is ERC20 {
         RLPReader.RLPItem[] memory claimEventTopics = claimEvent[1].toList();  // topics contain all indexed event fields
 
         // read value from claim event
-        c.burnContract = claimEventTopics[1].toAddress();  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.sender = claimEventTopics[2].toAddress();
+        c.burnContract = address(uint160(claimEventTopics[1].toUint()));  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.sender = address(uint160(claimEventTopics[2].toUint()));
         c.burnTime = claimEventTopics[3].toUint();
 
         return c;

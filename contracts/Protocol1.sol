@@ -46,7 +46,6 @@ contract Protocol1 is ERC20 {
     function burn(address recipient, address claimContract, uint value) public {
         require(recipient != address(0), "recipient address must not be zero address");
         require(participatingTokenContracts[claimContract] == true, "claim contract address is not registered");
-        require(balanceOf(msg.sender) >= value, 'sender has not enough tokens');
         _burn(msg.sender, value);
         emit Burn(recipient, claimContract, value);
     }
@@ -72,11 +71,11 @@ contract Protocol1 is ERC20 {
 
         // verify inclusion of burn transaction
         uint txExists = txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedTx, path, rlpMerkleProofTx);
-        require(txExists == 0, "burn transaction does not exist or has not enough confirmations");
+        require(txExists == 1, "burn transaction does not exist or has not enough confirmations");
 
         // verify inclusion of receipt
         uint receiptExists = txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, rlpEncodedReceipt, path, rlpMerkleProofReceipt);
-        require(receiptExists == 0, "burn receipt does not exist or has not enough confirmations");
+        require(receiptExists == 1, "burn receipt does not exist or has not enough confirmations");
 
         uint fee = calculateFee(c.value, TRANSFER_FEE);
         uint remainingValue = c.value - fee;
@@ -113,8 +112,8 @@ contract Protocol1 is ERC20 {
         RLPReader.RLPItem[] memory burnEventTopics = burnEventTuple[1].toList();  // topics contain all indexed event fields
 
         // read value and recipient from burn event
-        c.recipient = burnEventTopics[1].toAddress();  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
-        c.claimContract = burnEventTopics[2].toAddress();
+        c.recipient = address(uint160(burnEventTopics[1].toUint()));  // indices of indexed fields start at 1 (0 is reserved for the hash of the event signature)
+        c.claimContract = address(uint160(burnEventTopics[2].toUint()));
         c.value = burnEventTopics[3].toUint();
 
         return c;

@@ -5,15 +5,16 @@ const {
     expectRevert, // Assertions for transactions that should fail
 } = require('@openzeppelin/test-helpers');
 const {
-   asyncTrieProve,
    asyncTriePut,
    newTrie,
    createRLPHeader,
    createRLPTransaction,
-   createRLPReceipt
+   createRLPReceipt,
+   encodeToBuffer,
 } = require('../utils');
 const {expect} = require('chai');
 const RLP = require('rlp');
+const {BaseTrie: Trie} = require('merkle-patricia-tree');
 
 const TokenContract = artifacts.require('Protocol1');
 const TxInclusionVerifier = artifacts.require('MockedTxInclusionVerifier');
@@ -94,7 +95,7 @@ contract('Protocol1', (accounts) => {
    });
 
    it('should not burn tokens if the sender\'s balance is too low', async () => {
-      await expectRevert(burnContract.burn(accounts[0], claimContract.address, new BN(11)), 'sender has not enough tokens');
+      await expectRevert(burnContract.burn(accounts[0], claimContract.address, new BN(11)), 'ERC20: burn amount exceeds balance');
       const balance = await burnContract.balanceOf(accounts[0]);
       expect(balance).to.be.bignumber.equal(new BN(InitialBalanceSourceContract));
    });
@@ -118,7 +119,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -157,7 +158,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -199,7 +200,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -246,7 +247,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -294,7 +295,7 @@ contract('Protocol1', (accounts) => {
       };
       const rlpEncodedTx = createRLPTransaction(modifiedTx);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -329,7 +330,7 @@ contract('Protocol1', (accounts) => {
       };
       const rlpEncodedReceipt = createRLPReceipt(modifiedReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -361,7 +362,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -393,7 +394,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -425,7 +426,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -467,7 +468,7 @@ contract('Protocol1', (accounts) => {
       const rlpEncodedTx      = createRLPTransaction(tx);
       const rlpEncodedReceipt = createRLPReceipt(txReceipt);
 
-      const path = RLP.encode(tx.transactionIndex);
+      const path = encodeToBuffer(tx.transactionIndex);
       const rlpEncodedTxNodes = await createTxMerkleProof(block, tx.transactionIndex);
       const rlpEncodedReceiptNodes = await createReceiptMerkleProof(block, tx.transactionIndex);
 
@@ -493,7 +494,7 @@ contract('Protocol1', (accounts) => {
       }
 
       const key = RLP.encode(transactionIndex);
-      return RLP.encode(await asyncTrieProve(trie, key));
+      return encodeToBuffer(await Trie.createProof(trie, key));
    };
 
    const createReceiptMerkleProof = async (block, transactionIndex) => {
@@ -507,7 +508,7 @@ contract('Protocol1', (accounts) => {
       }
 
       const key = RLP.encode(transactionIndex);
-      return RLP.encode(await asyncTrieProve(trie, key));
+      return encodeToBuffer(await Trie.createProof(trie, key));
    }
 
 });

@@ -1,5 +1,4 @@
 const {
-    asyncTrieProve,
     asyncTriePut,
     newTrie,
     createRLPHeader,
@@ -271,7 +270,7 @@ const createTxMerkleProof = async (web3, chainId, block, transactionIndex) => {
     }
 
     const key = RLP.encode(transactionIndex);
-    return RLP.encode(await asyncTrieProve(trie, key));
+    return RLP.encode(await Trie.createProof(trie, key));
 };
 
 const createReceiptMerkleProof = async (web3, block, transactionIndex) => {
@@ -285,5 +284,5 @@ const createReceiptMerkleProof = async (web3, block, transactionIndex) => {
     }
 
     const key = RLP.encode(transactionIndex);
-    return RLP.encode(await asyncTrieProve(trie, key));
+    return RLP.encode(await Trie.createProof(trie, key));
 };
