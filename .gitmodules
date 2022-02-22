@@ -1,0 +1,4 @@
+[submodule "ioporacle"]
+	path = ioporacle
+	url = https://github.com/pantos-io/ioporacle.git
+	branch = develop
