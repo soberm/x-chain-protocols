@@ -17,12 +17,12 @@
     "contracts": {
       "ethash": {
         "name": "Ethash",
-        "file": "../testimonium/build/contracts/Ethash.json",
+        "file": "../ETH_Relay/ethrelay/build/contracts/Ethash.json",
         "address": "0x3E50685B744b7c77A4d46177CeABcD60e84C42b6"
       },
       "txVerifier": {
-        "name": "Testimonium",
-        "file": "../testimonium/build/contracts/Testimonium.json",
+        "name": "Ethrelay",
+        "file": "../ETH_Relay/ethrelay/build/contracts/Ethrelay.json",
         "address": "0x632237A203e586620dEf45210A7C541B1aAD4bF0",
         "genesisBlock": 7573521
       },
@@ -51,12 +51,12 @@
     "contracts": {
       "ethash": {
         "name": "Ethash",
-        "file": "../testimonium/build/contracts/Ethash.json",
+        "file": "../ETH_Relay/ethrelay/build/contracts/Ethash.json",
         "address": "0x15B3CcC82505Bd4E42DB0Ba2672767e86A984ef5"
       },
       "txVerifier": {
-        "name": "Testimonium",
-        "file": "../testimonium/build/contracts/Testimonium.json",
+        "name": "Ethrelay",
+        "file": "../ETH_Relay/ethrelay/build/contracts/Ethrelay.json",
         "address": "0x693C5b6aB8839659AC43e6bAdFe6Afb6F70910f2",
         "genesisBlock": 6186048
       },
