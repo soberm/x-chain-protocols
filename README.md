@@ -7,6 +7,9 @@ For that, the provided smart contracts need to be deployed on each participating
 
 ## Installation
 
+In order to correctly clone this project with its submodules, supply the `--recurse-submodules` flag to the clone command.
+If you have already cloned the repo, run `git submodule update --init --recursive`.
+
 The following guide will walk you through the deployment of the provided smart contracts on a local blockchain (Ganache).
 
 ### Prerequisites
