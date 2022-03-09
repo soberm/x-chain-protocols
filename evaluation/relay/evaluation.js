@@ -4,7 +4,7 @@ const {
     createRLPHeader,
     createRLPTransaction,
     createRLPReceipt
-} = require('../utils');
+} = require('../../utils');
 const RLP = require('rlp');
 const fs = require('fs');
 const {
@@ -14,7 +14,7 @@ const {
     getMostRecentBlockHash,
     getHeaderInfo,
     isHeaderStored
-} = require('./common');
+} = require('../common');
 const config = require('./config');  // conten of config.json
 
 const RUNS = 300;

@@ -1,6 +1,6 @@
 const fs = require("fs");
-const { createRLPHeader } = require("../utils");
-const { initNetwork, callContract } = require("./common");
+const { createRLPHeader } = require("../../utils");
+const { initNetwork, callContract } = require("../common");
 const config = require("./config");
 
 
