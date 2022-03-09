@@ -1,10 +1,10 @@
-const fs = require('fs');
-const { createRLPHeader } = require('../utils');
-const { initNetwork, callContract } = require('./common');
-const config = require('./config');
+const fs = require("fs");
+const { createRLPHeader } = require("../utils");
+const { initNetwork, callContract } = require("./common");
+const config = require("./config");
 
 
-module.exports = async function(callback) {
+module.exports = async callback => {
    try {
       await setUpContracts();
       callback();
@@ -14,7 +14,7 @@ module.exports = async function(callback) {
 };
 
 async function setUpContracts() {
-   console.log('Deploy contracts ...');
+   console.log("Deploying contracts...");
 
    let rinkebyNetworkInstance = initNetwork(config.rinkeby);
    let ropstenNetworkInstance = initNetwork(config.ropsten);
@@ -28,7 +28,7 @@ async function setUpContracts() {
    );
    config.rinkeby.contracts.ethash.address = receipt.contractAddress;
 
-   let mostRecentBlock = await ropstenNetworkInstance.web3.eth.getBlock('latest');
+   let mostRecentBlock = await ropstenNetworkInstance.web3.eth.getBlock("latest");
    let genesisBlock = await ropstenNetworkInstance.web3.eth.getBlock(mostRecentBlock.number - 10);  // make sure genesis block is confirmed by enough blocks
    let rlpHeader = createRLPHeader(genesisBlock);
    receipt = await deployContract(
@@ -57,7 +57,7 @@ async function setUpContracts() {
    );
    config.ropsten.contracts.ethash.address = receipt.contractAddress;
 
-   mostRecentBlock = await rinkebyNetworkInstance.web3.eth.getBlock('latest');
+   mostRecentBlock = await rinkebyNetworkInstance.web3.eth.getBlock("latest");
    genesisBlock = await rinkebyNetworkInstance.web3.eth.getBlock(mostRecentBlock.number - 10);  // make sure genesis block is confirmed by enough blocks
    rlpHeader = createRLPHeader(genesisBlock);
    receipt = await deployContract(
@@ -82,11 +82,11 @@ async function setUpContracts() {
    await registerTokenContract(config.ropsten, ropstenNetworkInstance, config.rinkeby.contracts.protocol.address);
 
    updateConfigJson(config);
-   console.log('Deployment completed');
+   console.log("Deployment completed");
 }
 
 async function deployContract(networkConfig, web3, contract, constructorArguments) {
-   console.log('Deploy contract', contract.name, 'on', networkConfig.name);
+   console.log("Deploy contract", contract.name, "on", networkConfig.name);
 
    let deployTx = await contract.instance.deploy({
       data: contract.bytecode,
@@ -103,8 +103,8 @@ async function deployContract(networkConfig, web3, contract, constructorArgument
    };
    let signedTx = await web3.eth.accounts.signTransaction(tx, networkConfig.accounts.user.privateKey);
    let txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
-   console.log('Transaction Hash:', txReceipt.transactionHash);
-   console.log('Contract Address:', txReceipt.contractAddress);
+   console.log("Transaction Hash:", txReceipt.transactionHash);
+   console.log("Contract Address:", txReceipt.contractAddress);
 
    return txReceipt;
 }
@@ -121,5 +121,5 @@ async function registerTokenContract(networkConfig, networkInstance, contractAdd
 
 function updateConfigJson(config) {
    const jsonString = JSON.stringify(config);
-   fs.writeFileSync('./evaluation/config.json', jsonString);
+   fs.writeFileSync("./evaluation/config.json", jsonString);
 }
