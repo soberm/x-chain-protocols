@@ -31,7 +31,7 @@ library RLPReader {
     * @return The next element in the iteration.
     */
     function next(Iterator memory self) internal pure returns (RLPItem memory) {
-        require(hasNext(self));
+        require(hasNext(self), "no more elements");
 
         uint ptr = self.nextPtr;
         uint itemLength = _itemLength(ptr);
@@ -68,7 +68,7 @@ library RLPReader {
     * @return An 'Iterator' over the item.
     */
     function iterator(RLPItem memory self) internal pure returns (Iterator memory) {
-        require(isList(self));
+        require(isList(self), "is not a list");
 
         uint ptr = self.memPtr + _payloadOffset(self.memPtr);
         return Iterator(self, ptr);
@@ -104,7 +104,7 @@ library RLPReader {
     * @param the RLP item containing the encoded list.
     */
     function toList(RLPItem memory item) internal pure returns (RLPItem[] memory) {
-        require(isList(item));
+        require(isList(item), "is not a list");
 
         uint items = numItems(item);
         RLPItem[] memory result = new RLPItem[](items);
@@ -180,7 +180,7 @@ library RLPReader {
 
     // any non-zero byte except "0x80" is considered true
     function toBoolean(RLPItem memory item) internal pure returns (bool) {
-        require(item.len == 1);
+        require(item.len == 1, "is not of length 1");
         uint result;
         uint memPtr = item.memPtr;
         assembly {
@@ -200,13 +200,13 @@ library RLPReader {
 
     function toAddress(RLPItem memory item) internal pure returns (address) {
         // 1 byte for the length prefix
-        require(item.len == 21);
+        require(item.len == 21, "is not of length 21");
 
         return address(uint160(toUint(item)));
     }
 
     function toUint(RLPItem memory item) internal pure returns (uint) {
-        require(item.len > 0 && item.len <= 33);
+        require(item.len > 0 && item.len <= 33, "is not of 0 < length <= 33");
 
         (uint memPtr, uint len) = payloadLocation(item);
 
@@ -226,7 +226,7 @@ library RLPReader {
     // enforces 32 byte length
     function toUintStrict(RLPItem memory item) internal pure returns (uint) {
         // one byte prefix
-        require(item.len == 33);
+        require(item.len == 33, "is not of length 33");
 
         uint result;
         uint memPtr = item.memPtr + 1;
@@ -238,7 +238,7 @@ library RLPReader {
     }
 
     function toBytes(RLPItem memory item) internal pure returns (bytes memory) {
-        require(item.len > 0);
+        require(item.len > 0, "has length 0");
 
         (uint memPtr, uint len) = payloadLocation(item);
         bytes memory result = new bytes(len);
