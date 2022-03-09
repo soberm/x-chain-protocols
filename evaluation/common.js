@@ -66,24 +66,15 @@ const initNetwork = (networkConfig) => {
     }
 };
 
-const callContract = async (networkConfig, account, web3, contractAddr, method) => {
-    console.log('Call function', method._method.name, 'on', networkConfig.name);
+const callContract = async (name, method, from) => {
+    console.log(`Calling method ${method._method.name} on ${name}`);
 
-    let medianGasPrice = parseInt(await web3.eth.getGasPrice());
-    let txCount = await web3.eth.getTransactionCount(account.address);
-    let tx = {
-        from: account.address,
-        to: contractAddr,
-        gasLimit: 7000000,
-        gasPrice: web3.utils.toHex(Math.ceil( medianGasPrice * 1.5)),
-        nonce: web3.utils.toHex(txCount),
-        value: '0x0',
-        data: method.encodeABI(),
-        chainId: networkConfig.chainId
-    };
-    let signedTx = await web3.eth.accounts.signTransaction(tx, account.privateKey);
-    let txReceipt = await web3.eth.sendSignedTransaction(signedTx.raw || signedTx.rawTransaction);
-    console.log('Transaction Hash:', txReceipt.transactionHash);
+    const txReceipt = await method.send({
+        "gas": await method.estimateGas({from}),
+        from
+    });
+
+    console.log(`New transaction on ${name} with hash ${txReceipt.transactionHash}`);
 
     return txReceipt;
 };
