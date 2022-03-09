@@ -1,14 +1,12 @@
-const RLP = require('rlp');
-const Web3 = require('web3');
-const {Transaction} = require('ethereumjs-tx');
-const {BaseTrie: Trie} = require('merkle-patricia-tree');
-const {arrToBufArr} = require('ethereumjs-util');
+const RLP = require("rlp");
+const Web3 = require("web3");
+const {TransactionFactory} = require("@ethereumjs/tx");
+const {BaseTrie: Trie} = require("merkle-patricia-tree");
+const {arrToBufArr} = require("ethereumjs-util");
+const BN = Web3.utils.BN;
 
-const web3 = new Web3(Web3.givenProvider || 'https://mainnet.infura.io', null, {});
-const BN = web3.utils.BN;
-
-const createRLPHeader = (block) => {
-    return encodeToBuffer([
+const createRLPHeader = block => {
+    const fields = [
         block.parentHash,
         block.sha3Uncles,
         block.miner,
@@ -24,32 +22,55 @@ const createRLPHeader = (block) => {
         block.extraData,
         block.mixHash,
         block.nonce,
-        // BigInt(block.baseFeePerGas),
-    ]);
+    ];
+
+    if (typeof block.baseFeePerGas !== "undefined") {
+        fields.push(BigInt(block.baseFeePerGas));
+    }
+
+    return encodeToBuffer(fields);
 };
 
 const createRLPTransaction = (tx, chainId) => {
     const txData = {
-      nonce: tx.nonce,
-      gasPrice: web3.utils.toHex(new BN(tx.gasPrice)),
-      gasLimit: tx.gas,
-      to: tx.to,
-      value: web3.utils.toHex(new BN(tx.value)),
-      data: tx.input,
-      v: tx.v,
-      r: tx.r,
-      s: tx.s
+        "nonce": tx.nonce,
+        "gasLimit": new BN(tx.gas),
+        "to": tx.to,
+        "value": new BN(tx.value),
+        "data": tx.input,
+        "v": tx.v,
+        "r": tx.r,
+        "s": tx.s,
+        "type": tx.type,
+        "maxPriorityFeePerGas": new BN(tx.maxPriorityFeePerGas),
+        "maxFeePerGas": new BN(tx.maxFeePerGas),
+        chainId,
+        "accessList": tx.accessList,
     };
-    const transaction = new Transaction(txData, { chain: chainId });
-    return transaction.serialize();
+
+    if (tx.type !== 2) {
+        txData.gasPrice = new BN(tx.gasPrice);
+    }
+
+    return TransactionFactory.fromTxData(txData).serialize();
 };
 
 const createRLPReceipt = (receipt) => {
-    return encodeToBuffer([
+    const rlpEncoded = encodeToBuffer([
         receipt.status ? 1 : 0,  // convert boolean to binary
         receipt.cumulativeGasUsed,
         receipt.logsBloom,
         convertLogs(receipt.logs)
+    ]);
+
+    const type = Web3.utils.hexToNumber(receipt.type);
+    if (type === 0) {
+        return rlpEncoded;
+    }
+
+    return Buffer.concat([
+        Buffer.from([type]),
+        rlpEncoded,
     ]);
 };
 
@@ -66,7 +87,7 @@ const asyncTrieGet = (trie, key) => {
 };
 
 const convertLogs = (logs) => {
-    return logs.map((log, i) =>
+    return logs.map(log =>
         [
             log.address,
             log.topics,
