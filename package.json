@@ -15,11 +15,13 @@
     "@openzeppelin/contracts": "^4.4.2"
   },
   "devDependencies": {
+    "@ethereumjs/common": "^2.6.2",
+    "@ethereumjs/tx": "^3.5.0",
     "@openzeppelin/test-helpers": "^0.5.4",
     "chai": "^4.2.0",
-    "ethereumjs-tx": "^2.1.2",
     "ethereumjs-util": "^7.1.4",
     "merkle-patricia-tree": "^4.2.3",
-    "rlp": "^3.0.0"
+    "rlp": "^3.0.0",
+    "web3": "^1.7.1"
   }
 }
