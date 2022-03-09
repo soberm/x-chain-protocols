@@ -37,7 +37,11 @@ contract OracleContractTxInclusionVerifier is OracleContract, TxInclusionVerifie
             return 0;
         }
 
-        return uint8(MerklePatriciaProof.verify(rlpEncodedValue, path, rlpEncodedNodes, getHash(rlpHeader, hashPos)));
+        uint8 result = uint8(MerklePatriciaProof.verify(rlpEncodedValue, path, rlpEncodedNodes, getHash(rlpHeader, hashPos)));
+        if (result == 0) {
+            return 1;
+        }
+        return 0;
     }
 
     function getHash(bytes memory rlpHeader, uint8 position) private pure returns (bytes32) {
