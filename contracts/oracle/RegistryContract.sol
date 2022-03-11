@@ -1,1 +1,1 @@
-../../ioporacle/ioporaclecontracts/contracts/RegistryContract.sol
+../../oracle/ioporaclecontracts/contracts/RegistryContract.sol

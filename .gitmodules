@@ -1,4 +1,8 @@
 [submodule "ioporacle"]
-	path = ioporacle
+	path = oracle
 	url = https://github.com/pantos-io/ioporacle.git
+	branch = evaluation
+[submodule "ethrelay"]
+	path = relay
+	url = https://github.com/pantos-io/ethrelay.git
 	branch = develop

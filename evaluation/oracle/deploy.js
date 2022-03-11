@@ -1,11 +1,8 @@
-const fs = require("fs");
-const { callContract } = require("../common");
-const initNetwork = require("./network");
+const {callContract, deployContract, registerTokenContract, updateConfigJson} = require("../common");
+const initNetwork = require("../network");
 const config = require("./config");
 
-deployContracts();
-
-async function deployContracts() {
+(async () => {
     console.log("Deploying contracts...");
 
     const [network0, network1] = [config[0], config[1]];
@@ -21,9 +18,11 @@ async function deployContracts() {
         registerTokenContract(network1.name, network1Instance, network0.contracts.protocol.address, network1.accounts.user.address),
     ]);
 
-    updateConfigJson(config);
+    updateConfigJson(config, __dirname);
     console.log("Deployment completed");
-}
+
+    process.exit();
+})();
 
 async function deployOnNetwork(jsonConfig, networkConfig) {
     const contracts = jsonConfig.contracts;
@@ -44,38 +43,4 @@ async function deployOnNetwork(jsonConfig, networkConfig) {
         contracts.oracle.address,
         100000000,
     ]);
-}
-
-async function deployContract(jsonConfig, contract, constructorArguments) {
-    console.log(`Deploying contract ${contract.name} on ${jsonConfig.name}...`);
-
-    contract.instance.options.from = jsonConfig.accounts.user.address;
-
-    const tx = contract.instance.deploy({
-        data: contract.bytecode,
-        arguments: constructorArguments,
-    });
-
-    const address = (await tx.send({
-        "gas": await tx.estimateGas(),
-    })).options.address;
-
-    contract.instance.options.address = address;
-    
-    console.log(`Contract ${contract.name} deployed at ${address} on ${jsonConfig.name}`);
-
-    return address;
-}
-
-async function registerTokenContract(networkName, networkInstance, contractAddrToRegister, from) {
-    return await callContract(
-        networkName,
-        networkInstance.contracts.protocol.instance.methods.registerTokenContract(contractAddrToRegister),
-        from,
-    );
-}
-
-function updateConfigJson(config) {
-   const jsonString = JSON.stringify(config, null, 2);
-   fs.writeFileSync("./config.json", jsonString);
 }

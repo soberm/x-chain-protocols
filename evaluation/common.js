@@ -1,83 +1,54 @@
-const fs = require('fs');
-const Web3 = require('web3');
-
-const initNetwork = (networkConfig) => {
-    // const web3 = new Web3(new Web3.providers.WebsocketProvider(networkConfig.url));
-    const web3 = new Web3(networkConfig.url);
-
-    // create contract object for Ethash
-    let jsonFileContent = fs.readFileSync(networkConfig.contracts.ethash.file);
-    let parsedJson = JSON.parse(jsonFileContent);
-    const ethashBytecode = parsedJson.bytecode;
-    const ethashInstance = new web3.eth.Contract(parsedJson.abi);
-    if (networkConfig.contracts.ethash.address !== undefined && networkConfig.contracts.ethash.address !== '') {
-        ethashInstance.options.address = networkConfig.contracts.ethash.address;
-    }
-    const ethashName = networkConfig.contracts.ethash.file.substring(
-        networkConfig.contracts.ethash.file.lastIndexOf("/") + 1,
-        networkConfig.contracts.ethash.file.lastIndexOf(".")
-    );
-
-    // create contract object for TxInclusionVerifier
-    jsonFileContent = fs.readFileSync(networkConfig.contracts.txVerifier.file);
-    parsedJson = JSON.parse(jsonFileContent);
-    const txVerifierBytecode = parsedJson.bytecode;
-    const txVerifierInstance = new web3.eth.Contract(parsedJson.abi);
-    if (networkConfig.contracts.txVerifier.address !== undefined && networkConfig.contracts.txVerifier.address !== '') {
-        txVerifierInstance.options.address = networkConfig.contracts.txVerifier.address;
-    }
-    const txVerifierName = networkConfig.contracts.txVerifier.file.substring(
-        networkConfig.contracts.txVerifier.file.lastIndexOf("/") + 1,
-        networkConfig.contracts.txVerifier.file.lastIndexOf(".")
-    );
-
-    // create contract object for Protocol2
-    jsonFileContent = fs.readFileSync(networkConfig.contracts.protocol.file);
-    parsedJson = JSON.parse(jsonFileContent);
-    const protocolBytecode = parsedJson.bytecode;
-    const protocolInstance = new web3.eth.Contract(parsedJson.abi);
-    if (networkConfig.contracts.protocol.address !== undefined && networkConfig.contracts.protocol.address !== '') {
-        protocolInstance.options.address = networkConfig.contracts.protocol.address;
-    }
-    const protocolName = networkConfig.contracts.protocol.file.substring(
-        networkConfig.contracts.protocol.file.lastIndexOf("/") + 1,
-        networkConfig.contracts.protocol.file.lastIndexOf(".")
-    );
-
-    return {
-        web3: web3,
-        contracts: {
-            ethash: {
-                name: ethashName,
-                bytecode: ethashBytecode,
-                instance: ethashInstance
-            },
-            txVerifier: {
-                name: txVerifierName,
-                bytecode: txVerifierBytecode,
-                instance: txVerifierInstance
-            },
-            protocol: {
-                name: protocolName,
-                bytecode: protocolBytecode,
-                instance: protocolInstance
-            }
-        }
-    }
-};
+const fs = require("fs");
+const path = require("path")
 
 const callContract = async (name, method, from) => {
     console.log(`Calling method ${method._method.name} on ${name}`);
 
     const txReceipt = await method.send({
         "gas": await method.estimateGas({from}),
-        from
+        from,
     });
 
     console.log(`New transaction on ${name} with hash ${txReceipt.transactionHash}`);
 
     return txReceipt;
 };
+
+async function deployContract(jsonConfig, contract, constructorArguments) {
+    console.log(`Deploying contract ${contract.name} on ${jsonConfig.name}...`);
+
+    const from = jsonConfig.accounts.user.address;
+    contract.instance.options.from = from;
+
+    const tx = contract.instance.deploy({
+        data: contract.bytecode,
+        arguments: constructorArguments,
+    });
+
+    const address = (await tx.send({
+        "gas": await tx.estimateGas({from}),
+        from,
+    })).options.address;
+
+    contract.instance.options.address = address;
+    
+    console.log(`Contract ${contract.name} deployed at ${address} on ${jsonConfig.name}`);
+
+    return address;
+}
+
+function updateConfigJson(config, dirname) {
+    const jsonString = JSON.stringify(config, null, 2);
+    fs.writeFileSync(path.resolve(dirname, "config.json"), jsonString);
+}
+
+async function registerTokenContract(networkName, networkInstance, contractAddrToRegister, from) {
+    return await callContract(
+        networkName,
+        networkInstance.contracts.protocol.instance.methods.registerTokenContract(contractAddrToRegister),
+        from,
+    );
+}
 
 const sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -99,8 +70,10 @@ const isHeaderStored = async (relayContract, blockHash) => {
 };
 
 module.exports = {
-    initNetwork,
     callContract,
+    deployContract,
+    updateConfigJson,
+    registerTokenContract,
     sleep,
     getMostRecentBlockHash,
     getHeaderInfo,

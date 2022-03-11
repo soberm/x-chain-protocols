@@ -35,13 +35,8 @@ module.exports = config => {
         "contracts": {},
     };
 
-    for (const contract of [
-        "distKey",
-        "registry",
-        "oracle",
-        "protocol"
-    ]) {
-        networkConfig.contracts[contract] = getContractConfig(web3, config.contracts[contract]);
+    for (const [name, contract] of Object.entries(config.contracts)) {
+        networkConfig.contracts[name] = getContractConfig(web3, contract);
     }
 
     return networkConfig;

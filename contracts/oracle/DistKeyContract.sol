@@ -1,1 +1,1 @@
-../../ioporacle/ioporaclecontracts/contracts/DistKeyContract.sol
+../../oracle/ioporaclecontracts/contracts/DistKeyContract.sol

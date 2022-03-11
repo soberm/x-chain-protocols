@@ -13,7 +13,7 @@ const {
     sleep,
 } = require("../common");
 const config = require("./config");
-const initNetwork = require("./network");
+const initNetwork = require("../network");
 
 const RUNS = 300;
 

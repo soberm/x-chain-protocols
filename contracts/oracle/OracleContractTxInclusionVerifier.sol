@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import "./OracleContract.sol";
 import "../TxInclusionVerifier.sol";
 import "../RLPReader.sol";
-import "./MerklePatriciaProof.sol";
+import "../MerklePatriciaProof.sol";
 
 contract OracleContractTxInclusionVerifier is OracleContract, TxInclusionVerifier {
 
