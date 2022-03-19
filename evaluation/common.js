@@ -54,20 +54,44 @@ const sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
 };
 
-/**
- * @returns the hash of the most recent block of the main chain stored within the relay running on the specified blockchain.
- */
-const getMostRecentBlockHash = async (relayContract) =>  {
-    return await relayContract.instance.methods.longestChainEndpoint().call();
-};
+function burn(jsonConfig, networkInstance, recipientAddr, claimContractAddr, value, stake) {
+    return callContract(
+        jsonConfig.name,
+        networkInstance.contracts.protocol.instance.methods.burn(recipientAddr, claimContractAddr, value, stake),
+        jsonConfig.accounts.user.address,
+    );
+}
 
-const getHeaderInfo = async (relayContract, blockHash) => {
-    return await relayContract.instance.methods.getHeader(blockHash).call();
-};
+function claim(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
+    return callContract(
+        jsonConfig.name,
+        networkInstance.contracts.protocol.instance.methods.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
+        jsonConfig.accounts.user.address,
+    );
+}
 
-const isHeaderStored = async (relayContract, blockHash) => {
-    return await relayContract.instance.methods.isHeaderStored(blockHash).call();
-};
+function confirm(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
+    return callContract(
+        jsonConfig.name,
+        networkInstance.contracts.protocol.instance.methods.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
+        jsonConfig.accounts.user.address,
+    );
+}
+
+async function waitUntilConfirmed(web3, txHash, confirmations) {
+    while (true) {
+        const receipt = await web3.eth.getTransactionReceipt(txHash);
+        if (receipt !== null) {
+            const mostRecentBlockNumber = await web3.eth.getBlockNumber();
+            if (receipt.blockNumber + confirmations <= mostRecentBlockNumber) {
+                // receipt != null -> tx is part of main chain
+                // and block containing tx has at least confirmations successors
+                break;
+            }
+        }
+        await sleep(1500);
+    }
+}
 
 module.exports = {
     callContract,
@@ -75,7 +99,8 @@ module.exports = {
     updateConfigJson,
     registerTokenContract,
     sleep,
-    getMostRecentBlockHash,
-    getHeaderInfo,
-    isHeaderStored
+    burn,
+    claim,
+    confirm,
+    waitUntilConfirmed,
 };

@@ -24,11 +24,11 @@ module.exports = config => {
     const web3 = new Web3(new Web3.providers.WebsocketProvider(config.url));
     web3.eth.transactionBlockTimeout = 350;
 
-    // Creating a signing account from a private key
-    const signer = web3.eth.accounts.privateKeyToAccount(
-        config.accounts.user.privateKey,
-    );
-    web3.eth.accounts.wallet.add(signer);
+    for (const {privateKey} of Object.values(config.accounts)) {
+        web3.eth.accounts.wallet.add(
+            web3.eth.accounts.privateKeyToAccount(privateKey),
+        );
+    }
 
     const networkConfig = {
         web3,

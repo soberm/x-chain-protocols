@@ -10,7 +10,10 @@ const {BaseTrie: Trie} = require("merkle-patricia-tree");
 const fs = require("fs");
 const {
     callContract,
-    sleep,
+    burn,
+    claim,
+    confirm,
+    waitUntilConfirmed,
 } = require("../common");
 const config = require("./config");
 const initNetwork = require("../network");
@@ -157,45 +160,6 @@ const network1Instance = initNetwork(config[1]);
     fs.closeSync(fd);
     console.log("+++ Done +++");
 })();
-
-async function burn(jsonConfig, networkInstance, recipientAddr, claimContractAddr, value, stake) {
-    return await callContract(
-        jsonConfig.name,
-        networkInstance.contracts.protocol.instance.methods.burn(recipientAddr, claimContractAddr, value, stake),
-        jsonConfig.accounts.user.address,
-    );
-}
-
-async function claim(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
-    return await callContract(
-        jsonConfig.name,
-        networkInstance.contracts.protocol.instance.methods.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
-        jsonConfig.accounts.user.address,
-    );
-}
-
-async function confirm(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
-    return await callContract(
-        jsonConfig.name,
-        networkInstance.contracts.protocol.instance.methods.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
-        jsonConfig.accounts.user.address,
-    );
-}
-
-async function waitUntilConfirmed(web3, txHash, confirmations) {
-    while (true) {
-        let receipt = await web3.eth.getTransactionReceipt(txHash);
-        if (receipt !== null) {
-            let mostRecentBlockNumber = await web3.eth.getBlockNumber();
-            if (receipt.blockNumber + confirmations <= mostRecentBlockNumber) {
-                // receipt != null -> tx is part of main chain
-                // and block containing tx has at least confirmations successors
-                break;
-            }
-        }
-        await sleep(1500);
-    }
-}
 
 async function waitUntilConfirmedWithinOracle(jsonConfig, networkConfig, blockHash, oracleContract) {
 

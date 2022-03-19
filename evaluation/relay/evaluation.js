@@ -3,37 +3,30 @@ const {
     newTrie,
     createRLPHeader,
     createRLPTransaction,
-    createRLPReceipt
-} = require('../../utils');
-const RLP = require('rlp');
-const fs = require('fs');
-const {
-    initNetwork,
-    callContract,
-    sleep,
-    getMostRecentBlockHash,
-    getHeaderInfo,
-    isHeaderStored
-} = require('../common');
-const config = require('./config');  // conten of config.json
+    createRLPReceipt,
+    encodeToBuffer,
+} = require("../../utils");
+const fs = require("fs");
+const {BaseTrie: Trie} = require("merkle-patricia-tree");
+const {sleep, burn, claim, confirm, waitUntilConfirmed} = require("../common");
+const {getMostRecentBlockHash} = require("./common");
+const initNetwork = require("../network");
+const config = require("./config");
 
-const RUNS = 300;
+const RUNS = 100;
 
-module.exports = async function (callback) {
-    try {
-        let rinkebyNetworkInstance = initNetwork(config.rinkeby);
-        let ropstenNetworkInstance = initNetwork(config.ropsten);
-        await startEvaluation(rinkebyNetworkInstance, ropstenNetworkInstance);
-        callback();
-    } catch (err) {
-        callback(err);
-    }
-};
+const network0Instance = initNetwork(config[0]);
+const network1Instance = initNetwork(config[1]);
 
-async function startEvaluation(rinkebyNetworkInstance, ropstenNetworkInstance) {
-    console.log(`+++ Starting evaluation +++`);
+(async () => {
+    await startEvaluation();
+    process.exit();
+})();
 
-    const fd = fs.openSync(`./evaluation/results.csv`, "w");
+async function startEvaluation() {
+    console.log("+++ Starting evaluation +++");
+
+    const fd = fs.openSync("./results.csv", "w");
     fs.writeSync(fd, "run,burn_gas,claim_gas,confirm_gas,burn_cost,claim_cost,confirm_cost,burn_incTime,claim_incTime,confirm_incTime,burn_confTime,claim_confTime,confirm_confTime,burn_confTimeRelay,claim_confTimeRelay\n");
 
     for (let run = 1; run <= RUNS; run++) {
@@ -42,169 +35,126 @@ async function startEvaluation(rinkebyNetworkInstance, ropstenNetworkInstance) {
             claim: {},
             confirm: {}
         };
-        console.log('Run:', run);
+        console.log("Run:", run);
+
+        const [config0, config1] = [config[0], config[1]];
 
         // submit burn transaction
-        let balanceInWeiBefore = parseInt(await rinkebyNetworkInstance.web3.eth.getBalance(config.rinkeby.accounts.user.address));
+        let balanceInWeiBefore = BigInt(await network0Instance.web3.eth.getBalance(config0.accounts.user.address));
         let startTime = new Date().getTime();
         let burnReceipt;
         try {
-            burnReceipt = await burn(config.rinkeby, rinkebyNetworkInstance, config.ropsten.accounts.user.address, config.ropsten.contracts.protocol.address, 1, 0);
+            burnReceipt = await burn(config0, network0Instance, config1.accounts.user.address, config1.contracts.protocol.address, 1, 0);
         } catch (e) {
             console.log(e.message);
             run--;
             continue;
         }
         let endTime = new Date().getTime();
-        let balanceInWeiAfter = parseInt(await rinkebyNetworkInstance.web3.eth.getBalance(config.rinkeby.accounts.user.address));
+        let balanceInWeiAfter = BigInt(await network0Instance.web3.eth.getBalance(config0.accounts.user.address));
         result.burn.inclusionTime = (endTime - startTime) / 1000;  // diff in seconds
         result.burn.gasConsumption = burnReceipt.gasUsed;
         result.burn.cost = balanceInWeiBefore - balanceInWeiAfter;
 
-        console.log('wait for confirmation of burn tx ...');
+        console.log("wait for confirmation of burn tx ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmed(rinkebyNetworkInstance.web3, burnReceipt.transactionHash, config.rinkeby.confirmations);
+        await waitUntilConfirmed(network0Instance.web3, burnReceipt.transactionHash, config0.confirmations);
         endTime = new Date().getTime();
         result.burn.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
-        console.log('burn tx is confirmed');
+        console.log("burn tx is confirmed");
 
-        console.log('wait for burn tx to be confirmed within relay running on Ropsten ...');
+        console.log("wait for burn tx to be confirmed within relay running on Ropsten ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmedWithinRelay(rinkebyNetworkInstance.web3, burnReceipt.transactionHash, config.rinkeby.confirmations, ropstenNetworkInstance.contracts.txVerifier);
+        await waitUntilConfirmedWithinRelay(network0Instance.web3, burnReceipt.transactionHash, config0.confirmations, network1Instance.contracts.relay);
         endTime = new Date().getTime();
         result.burn.relayTime = (endTime - startTime) / 1000;  // diff in seconds
-        console.log('burn tx is confirmed within relay');
+        console.log("burn tx is confirmed within relay");
 
 
         // submit claim transaction
-        burnReceipt = await rinkebyNetworkInstance.web3.eth.getTransactionReceipt(burnReceipt.transactionHash);  // load receipt again to be on the safe side if chain reorganization occurred
-        let block = await rinkebyNetworkInstance.web3.eth.getBlock(burnReceipt.blockHash);
-        let tx = await rinkebyNetworkInstance.web3.eth.getTransaction(burnReceipt.transactionHash);
-        let txReceipt = await rinkebyNetworkInstance.web3.eth.getTransactionReceipt(burnReceipt.transactionHash);
+        burnReceipt = await network0Instance.web3.eth.getTransactionReceipt(burnReceipt.transactionHash);  // load receipt again to be on the safe side if chain reorganization occurred
+        let block = await network0Instance.web3.eth.getBlock(burnReceipt.blockHash);
+        let tx = await network0Instance.web3.eth.getTransaction(burnReceipt.transactionHash);
+        let txReceipt = await network0Instance.web3.eth.getTransactionReceipt(burnReceipt.transactionHash);
         let rlpHeader = createRLPHeader(block);
-        let rlpEncodedTx = createRLPTransaction(tx, config.rinkeby.chainId);
+        let rlpEncodedTx = createRLPTransaction(tx, config0.chainId);
         let rlpEncodedReceipt = createRLPReceipt(txReceipt);
-        let path = RLP.encode(tx.transactionIndex);
-        let rlpEncodedTxNodes = await createTxMerkleProof(rinkebyNetworkInstance.web3, config.rinkeby.chainId, block, tx.transactionIndex);
-        let rlpEncodedReceiptNodes = await createReceiptMerkleProof(rinkebyNetworkInstance.web3, block, tx.transactionIndex);
+        let path = encodeToBuffer(tx.transactionIndex);
+        let rlpEncodedTxNodes = await createTxMerkleProof(network0Instance.web3, config0.chainId, block, tx.transactionIndex);
+        let rlpEncodedReceiptNodes = await createReceiptMerkleProof(network0Instance.web3, block, tx.transactionIndex);
 
-        balanceInWeiBefore = parseInt(await ropstenNetworkInstance.web3.eth.getBalance(config.ropsten.accounts.user.address));
+        balanceInWeiBefore = BigInt(await network1Instance.web3.eth.getBalance(config1.accounts.user.address));
         startTime = new Date().getTime();
         let claimReceipt;
         try{
-            claimReceipt = await claim(config.ropsten, ropstenNetworkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
+            claimReceipt = await claim(config1, network1Instance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
         } catch (e) {
             console.log(e.message);
             run--;
             continue;
         }
         endTime = new Date().getTime();
-        balanceInWeiAfter = parseInt(await ropstenNetworkInstance.web3.eth.getBalance(config.ropsten.accounts.user.address));
+        balanceInWeiAfter = BigInt(await network1Instance.web3.eth.getBalance(config1.accounts.user.address));
         result.claim.inclusionTime = (endTime - startTime) / 1000;  // diff in seconds
         result.claim.gasConsumption = claimReceipt.gasUsed;
         result.claim.cost = balanceInWeiBefore - balanceInWeiAfter;
 
-        console.log('wait for confirmation of claim tx ...');
+        console.log("wait for confirmation of claim tx ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmed(ropstenNetworkInstance.web3, claimReceipt.transactionHash, config.ropsten.confirmations);
+        await waitUntilConfirmed(network1Instance.web3, claimReceipt.transactionHash, config1.confirmations);
         endTime = new Date().getTime();
         result.claim.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
-        console.log('claim tx is confirmed');
+        console.log("claim tx is confirmed");
 
-        console.log('wait for claim tx to be confirmed within relay running on Rinkeby ...');
+        console.log("wait for claim tx to be confirmed within relay running on Rinkeby ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmedWithinRelay(ropstenNetworkInstance.web3, claimReceipt.transactionHash, config.ropsten.confirmations, rinkebyNetworkInstance.contracts.txVerifier);
+        await waitUntilConfirmedWithinRelay(network1Instance.web3, claimReceipt.transactionHash, config1.confirmations, network0Instance.contracts.relay);
         endTime = new Date().getTime();
         result.claim.relayTime = (endTime - startTime) / 1000;  // diff in seconds
-        console.log('claim tx is confirmed within relay');
+        console.log("claim tx is confirmed within relay");
 
 
         // submit confirm transaction
-        claimReceipt = await ropstenNetworkInstance.web3.eth.getTransactionReceipt(claimReceipt.transactionHash);  // load receipt again to be on the safe side if chain reorganization occurred
-        block = await ropstenNetworkInstance.web3.eth.getBlock(claimReceipt.blockHash);
-        tx = await ropstenNetworkInstance.web3.eth.getTransaction(claimReceipt.transactionHash);
-        txReceipt = await ropstenNetworkInstance.web3.eth.getTransactionReceipt(claimReceipt.transactionHash);
+        claimReceipt = await network1Instance.web3.eth.getTransactionReceipt(claimReceipt.transactionHash);  // load receipt again to be on the safe side if chain reorganization occurred
+        block = await network1Instance.web3.eth.getBlock(claimReceipt.blockHash);
+        tx = await network1Instance.web3.eth.getTransaction(claimReceipt.transactionHash);
+        txReceipt = await network1Instance.web3.eth.getTransactionReceipt(claimReceipt.transactionHash);
         rlpHeader = createRLPHeader(block);
-        rlpEncodedTx = createRLPTransaction(tx, config.ropsten.chainId);
+        rlpEncodedTx = createRLPTransaction(tx, config1.chainId);
         rlpEncodedReceipt = createRLPReceipt(txReceipt);
-        path = RLP.encode(tx.transactionIndex);
-        rlpEncodedTxNodes = await createTxMerkleProof(ropstenNetworkInstance.web3, config.ropsten.chainId, block, tx.transactionIndex);
-        rlpEncodedReceiptNodes = await createReceiptMerkleProof(ropstenNetworkInstance.web3, block, tx.transactionIndex);
+        path = encodeToBuffer(tx.transactionIndex);
+        rlpEncodedTxNodes = await createTxMerkleProof(network1Instance.web3, config1.chainId, block, tx.transactionIndex);
+        rlpEncodedReceiptNodes = await createReceiptMerkleProof(network1Instance.web3, block, tx.transactionIndex);
 
-        balanceInWeiBefore = parseInt(await rinkebyNetworkInstance.web3.eth.getBalance(config.rinkeby.accounts.user.address));
+        balanceInWeiBefore = BigInt(await network0Instance.web3.eth.getBalance(config0.accounts.user.address));
         startTime = new Date().getTime();
         let confirmReceipt;
         try {
-            confirmReceipt = await confirm(config.rinkeby, rinkebyNetworkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
+            confirmReceipt = await confirm(config0, network0Instance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
         } catch (e) {
             console.log(e.message);
             run--;
             continue;
         }
         endTime = new Date().getTime();
-        balanceInWeiAfter = parseInt(await rinkebyNetworkInstance.web3.eth.getBalance(config.rinkeby.accounts.user.address));
+        balanceInWeiAfter = BigInt(await network0Instance.web3.eth.getBalance(config0.accounts.user.address));
         result.confirm.inclusionTime = (endTime - startTime) / 1000;  // diff in seconds
         result.confirm.gasConsumption = confirmReceipt.gasUsed;
         result.confirm.cost = balanceInWeiBefore - balanceInWeiAfter;
 
-        console.log('wait for confirmation of confirm tx ...');
+        console.log("wait for confirmation of confirm tx ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmed(rinkebyNetworkInstance.web3, confirmReceipt.transactionHash, config.rinkeby.confirmations);
+        await waitUntilConfirmed(network0Instance.web3, confirmReceipt.transactionHash, config0.confirmations);
         endTime = new Date().getTime();
         result.confirm.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
-        console.log('confirm tx is confirmed');
+        console.log("confirm tx is confirmed");
 
         console.log(`${run}: ${result.burn.gasConsumption},${result.claim.gasConsumption},${result.confirm.gasConsumption},${result.burn.cost},${result.claim.cost},${result.confirm.cost},${result.burn.inclusionTime},${result.claim.inclusionTime},${result.confirm.inclusionTime},${result.burn.confirmationTime},${result.claim.confirmationTime},${result.confirm.confirmationTime},${result.burn.relayTime},${result.claim.relayTime}`);
         fs.writeSync(fd, `${run},${result.burn.gasConsumption},${result.claim.gasConsumption},${result.confirm.gasConsumption},${result.burn.cost},${result.claim.cost},${result.confirm.cost},${result.burn.inclusionTime},${result.claim.inclusionTime},${result.confirm.inclusionTime},${result.burn.confirmationTime},${result.claim.confirmationTime},${result.confirm.confirmationTime},${result.burn.relayTime},${result.claim.relayTime}\n`);
     }
 
     fs.closeSync(fd);
-    console.log(`+++ Done +++`);
-}
-
-async function burn(networkConfig, networkInstance, recipientAddr, claimContractAddr, value, stake) {
-    return await callContract(
-        networkConfig,
-        networkConfig.accounts.user,
-        networkInstance.web3,
-        networkConfig.contracts.protocol.address,
-        networkInstance.contracts.protocol.instance.methods.burn(recipientAddr, claimContractAddr, value, stake)
-    );
-}
-
-async function claim(networkConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
-    return await callContract(
-        networkConfig,
-        networkConfig.accounts.user,
-        networkInstance.web3,
-        networkConfig.contracts.protocol.address,
-        networkInstance.contracts.protocol.instance.methods.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path)
-    );
-}
-
-async function confirm(networkConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
-    return await callContract(
-        networkConfig,
-        networkConfig.accounts.user,
-        networkInstance.web3,
-        networkConfig.contracts.protocol.address,
-        networkInstance.contracts.protocol.instance.methods.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path)
-    );
-}
-
-async function waitUntilConfirmed(web3, txHash, confirmations) {
-    while (true) {
-        let receipt = await web3.eth.getTransactionReceipt(txHash);
-        if (receipt !== null) {
-            let mostRecentBlockNumber = await web3.eth.getBlockNumber();
-            if (receipt.blockNumber + confirmations <= mostRecentBlockNumber) {
-                // receipt != null -> tx is part of main chain
-                // and block containing tx has at least confirmations successors
-                break;
-            }
-        }
-        await sleep(1500);
-    }
+    console.log("+++ Done +++");
 }
 
 /**
@@ -235,8 +185,8 @@ async function waitUntilConfirmedWithinRelay(sourceWeb3, transactionHash, confir
         }
 
         headerToConfirm = await getHeaderInfo(relayContract, receipt.blockHash);
-        headerToConfirmBlockNr = parseInt(headerToConfirm.blockNumber);
-        console.log('HeaderToConfirm:',headerToConfirmBlockNr);
+        headerToConfirmBlockNr = BigInt(headerToConfirm.blockNumber);
+        console.log("HeaderToConfirm:",headerToConfirmBlockNr);
         if (headerToConfirmBlockNr === 0) {
             // header to confirm not stored within relay -> wait
             continue;
@@ -244,11 +194,11 @@ async function waitUntilConfirmedWithinRelay(sourceWeb3, transactionHash, confir
 
         mostRecentBlockHash = await getMostRecentBlockHash(relayContract);
         mostRecentHeader = await getHeaderInfo(relayContract, mostRecentBlockHash);
-        console.log('MostRecentHeader:',parseInt(mostRecentHeader.blockNumber));
-        if ((headerToConfirmBlockNr + confirmations) <= parseInt(mostRecentHeader.blockNumber)) {
+        console.log("MostRecentHeader:",BigInt(mostRecentHeader.blockNumber));
+        if ((headerToConfirmBlockNr + BigInt(confirmations)) <= BigInt(mostRecentHeader.blockNumber)) {
             // check if most recent block header can reach headerToConfirm by traversing over parent hashes
             let currentHeader = mostRecentHeader;
-            while (headerToConfirmBlockNr <= parseInt(currentHeader.blockNumber)) {
+            while (headerToConfirmBlockNr <= BigInt(currentHeader.blockNumber)) {
                 if (currentHeader.hash.localeCompare(headerToConfirm.hash) === 0) {
                     isConfirmed = true;
                     break;
@@ -265,12 +215,12 @@ const createTxMerkleProof = async (web3, chainId, block, transactionIndex) => {
     for (let i = 0; i < block.transactions.length; i++) {
         const tx = await web3.eth.getTransaction(block.transactions[i]);
         const rlpTx = createRLPTransaction(tx, chainId);
-        const key = RLP.encode(i);
+        const key = encodeToBuffer(i);
         await asyncTriePut(trie, key, rlpTx);
     }
 
-    const key = RLP.encode(transactionIndex);
-    return RLP.encode(await Trie.createProof(trie, key));
+    const key = encodeToBuffer(transactionIndex);
+    return await Trie.createProof(trie, key);
 };
 
 const createReceiptMerkleProof = async (web3, block, transactionIndex) => {
@@ -279,10 +229,14 @@ const createReceiptMerkleProof = async (web3, block, transactionIndex) => {
     for (let i = 0; i < block.transactions.length; i++) {
         const receipt = await web3.eth.getTransactionReceipt(block.transactions[i]);
         const rlpReceipt = createRLPReceipt(receipt);
-        const key = RLP.encode(i);
+        const key = encodeToBuffer(i);
         await asyncTriePut(trie, key, rlpReceipt);
     }
 
-    const key = RLP.encode(transactionIndex);
-    return RLP.encode(await Trie.createProof(trie, key));
+    const key = encodeToBuffer(transactionIndex);
+    return await Trie.createProof(trie, key);
+};
+
+const getHeaderInfo = (relayContract, blockHash) => {
+    return relayContract.instance.methods.getHeader(blockHash).call();
 };

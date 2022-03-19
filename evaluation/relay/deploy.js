@@ -3,11 +3,11 @@ const {createRLPHeader} = require("../../utils");
 const initNetwork = require("../network");
 const config = require("./config");
 
+const [network0, network1] = [config[0], config[1]];
+const [network0Instance, network1Instance] = [initNetwork(network0), initNetwork(network1)];
+
 (async () => {
    console.log("Deploying contracts...");
-
-   const [network0, network1] = [config[0], config[1]];
-   const [network0Instance, network1Instance] = [initNetwork(network0), initNetwork(network1)];
    
    await Promise.all([
       deployOnNetwork(network0, network0Instance),
@@ -30,8 +30,10 @@ async function deployOnNetwork(jsonConfig, networkConfig) {
 
    contracts.ethash.address = await deployContract(jsonConfig, networkConfig.contracts.ethash);
 
-   const mostRecentBlock = await ropstenNetworkInstance.web3.eth.getBlock("latest");
-   const genesisBlock = await ropstenNetworkInstance.web3.eth.getBlock(mostRecentBlock.number - 10);  // make sure genesis block is confirmed by enough blocks
+   const otherNetworkInstance = networkConfig === network0Instance ? network1Instance : network0Instance;
+
+   const mostRecentBlock = await otherNetworkInstance.web3.eth.getBlock("latest");
+   const genesisBlock = await otherNetworkInstance.web3.eth.getBlock(mostRecentBlock.number - 10);  // make sure genesis block is confirmed by enough blocks
    const rlpHeader = createRLPHeader(genesisBlock);
 
    contracts.relay.address = await deployContract(jsonConfig, networkConfig.contracts.relay, [
