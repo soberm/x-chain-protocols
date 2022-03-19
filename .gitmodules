@@ -5,4 +5,4 @@
 [submodule "ethrelay"]
 	path = relay
 	url = https://github.com/pantos-io/ethrelay.git
-	branch = develop
+	branch = evaluation
