@@ -34,7 +34,7 @@ if (sourceNetworkName === "rinkeby") {
    console.log(`Relay headers from ${sourceNetworkConfig.name} to ${destinationNetworkConfig.name}...`);
 
    let nextBlockNr = await getNextBlockNumberInRelay();
-   const backwardsSteps = 0;
+   let backwardsSteps = 0;
 
    const blockWatcher = new BlockWatcher(sourceNetworkInstance.web3, await sourceNetworkInstance.web3.eth.getBlockNumber());
 
