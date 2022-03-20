@@ -8,8 +8,7 @@ const {
 } = require("../../utils");
 const fs = require("fs");
 const {BaseTrie: Trie} = require("merkle-patricia-tree");
-const {sleep, burn, claim, confirm, waitUntilConfirmed} = require("../common");
-const {getMostRecentBlockHash} = require("./common");
+const {burn, claim, confirm, waitUntilConfirmed} = require("../common");
 const initNetwork = require("../network");
 const config = require("./config");
 
@@ -65,7 +64,7 @@ async function startEvaluation() {
 
         console.log("wait for burn tx to be confirmed within relay running on Ropsten ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmedWithinRelay(network0Instance.web3, burnReceipt.transactionHash, config0.confirmations, network1Instance.contracts.relay);
+        await waitUntilConfirmedWithinRelay(network0Instance.web3, network1Instance.web3, burnReceipt.transactionHash, config0.confirmations, network1Instance.contracts.relay);
         endTime = new Date().getTime();
         result.burn.relayTime = (endTime - startTime) / 1000;  // diff in seconds
         console.log("burn tx is confirmed within relay");
@@ -108,7 +107,7 @@ async function startEvaluation() {
 
         console.log("wait for claim tx to be confirmed within relay running on Rinkeby ...");
         startTime = new Date().getTime();
-        await waitUntilConfirmedWithinRelay(network1Instance.web3, claimReceipt.transactionHash, config1.confirmations, network0Instance.contracts.relay);
+        await waitUntilConfirmedWithinRelay(network1Instance.web3, network0Instance.web3, claimReceipt.transactionHash, config1.confirmations, network0Instance.contracts.relay);
         endTime = new Date().getTime();
         result.claim.relayTime = (endTime - startTime) / 1000;  // diff in seconds
         console.log("claim tx is confirmed within relay");
@@ -131,8 +130,8 @@ async function startEvaluation() {
         let confirmReceipt;
         try {
             confirmReceipt = await confirm(config0, network0Instance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
-        } catch (e) {
-            console.log(e.message);
+        } catch (err) {
+            console.log(err);
             run--;
             continue;
         }
@@ -157,57 +156,28 @@ async function startEvaluation() {
     console.log("+++ Done +++");
 }
 
-/**
- * Waits until the header of block with blockHash is stored and confirmed within the relay.
- * @param blockNumber
- * @param confirmations
- * @param networkInstance
- * @returns {Promise<void>}
- */
-async function waitUntilConfirmedWithinRelay(sourceWeb3, transactionHash, confirmations, relayContract) {
-    let firstRun = true;
-    let headerToConfirm;
-    let headerToConfirmBlockNr;
-    let mostRecentBlockHash;
-    let mostRecentHeader;
-    let isConfirmed = false;
+async function waitUntilConfirmedWithinRelay(sourceWeb3, destWeb3, transactionHash, confirmations, relayContract) {
+    const blockHash = (await sourceWeb3.eth.getTransactionReceipt(transactionHash)).blockHash;
 
-    do {
-        if (firstRun === false) {  // do not sleep at first run
-            await sleep(1500);
-        }
-        firstRun = false;
-
-        let receipt = await sourceWeb3.eth.getTransactionReceipt(transactionHash);
-
-        if (receipt === null) {
-            continue;
-        }
-
-        headerToConfirm = await getHeaderInfo(relayContract, receipt.blockHash);
-        headerToConfirmBlockNr = BigInt(headerToConfirm.blockNumber);
-        console.log("HeaderToConfirm:",headerToConfirmBlockNr);
-        if (headerToConfirmBlockNr === 0) {
-            // header to confirm not stored within relay -> wait
-            continue;
-        }
-
-        mostRecentBlockHash = await getMostRecentBlockHash(relayContract);
-        mostRecentHeader = await getHeaderInfo(relayContract, mostRecentBlockHash);
-        console.log("MostRecentHeader:",BigInt(mostRecentHeader.blockNumber));
-        if ((headerToConfirmBlockNr + BigInt(confirmations)) <= BigInt(mostRecentHeader.blockNumber)) {
-            // check if most recent block header can reach headerToConfirm by traversing over parent hashes
-            let currentHeader = mostRecentHeader;
-            while (headerToConfirmBlockNr <= BigInt(currentHeader.blockNumber)) {
-                if (currentHeader.hash.localeCompare(headerToConfirm.hash) === 0) {
-                    isConfirmed = true;
-                    break;
-                }
-                let parentHash = (await sourceWeb3.eth.getBlock(currentHeader.hash)).parentHash;
-                currentHeader = await getHeaderInfo(relayContract, parentHash);
+    return new Promise(resolve => {
+        const subscription = destWeb3.eth.subscribe("newBlockHeaders", async err => {
+            if (err !== null) {
+               console.error(err);
+               return;
             }
-        }
-    } while (isConfirmed === false);
+
+            const isConfirmed = await relayContract.instance.methods.isBlockConfirmed(
+                0,
+                blockHash,
+                confirmations,
+            ).call();
+
+            if (isConfirmed) {
+                subscription.unsubscribe();
+                resolve();
+            }
+        });
+    });
 }
 
 const createTxMerkleProof = async (web3, chainId, block, transactionIndex) => {
@@ -220,7 +190,7 @@ const createTxMerkleProof = async (web3, chainId, block, transactionIndex) => {
     }
 
     const key = encodeToBuffer(transactionIndex);
-    return await Trie.createProof(trie, key);
+    return encodeToBuffer(await Trie.createProof(trie, key));
 };
 
 const createReceiptMerkleProof = async (web3, block, transactionIndex) => {
@@ -234,9 +204,5 @@ const createReceiptMerkleProof = async (web3, block, transactionIndex) => {
     }
 
     const key = encodeToBuffer(transactionIndex);
-    return await Trie.createProof(trie, key);
-};
-
-const getHeaderInfo = (relayContract, blockHash) => {
-    return relayContract.instance.methods.getHeader(blockHash).call();
+    return encodeToBuffer(await Trie.createProof(trie, key));
 };
