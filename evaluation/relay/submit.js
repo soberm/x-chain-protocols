@@ -1,11 +1,11 @@
 const {createRLPHeader, encodeToBuffer} = require("../../utils");
-const {callContract, sleep} = require("../common");
-const {getMostRecentBlockHash} = require("./common");
+const {callContract} = require("../common");
 const initNetwork = require("../network");
 const config = require("./config");
 const process = require("process");
 
 const HEADER_BATCH_SIZE = 25;
+const MAX_BACKWARDS_STEPS = 100;
 
 const sourceNetworkName = process.argv[2];
 let sourceNetworkConfig;
@@ -33,13 +33,17 @@ if (sourceNetworkName === "rinkeby") {
 (async () => {
    console.log(`Relay headers from ${sourceNetworkConfig.name} to ${destinationNetworkConfig.name}...`);
 
-   let mostRecentHeader = await getMostRecentBlockHash(destinationNetworkInstance.contracts.relay, destinationNetworkConfig.accounts.submitter.address);
-   let mostRecentBlock = await sourceNetworkInstance.web3.eth.getBlock(mostRecentHeader);
-   let nextBlockNr = mostRecentBlock.number + 1;
+   let nextBlockNr = await getNextBlockNumberInRelay();
+   const backwardsSteps = 0;
 
    const blockWatcher = new BlockWatcher(sourceNetworkInstance.web3, await sourceNetworkInstance.web3.eth.getBlockNumber());
 
    while(true) {
+      if (backwardsSteps >= MAX_BACKWARDS_STEPS) {
+         nextBlockNr = await getNextBlockNumberInRelay();
+         backwardsSteps = 0;
+      }
+
       console.log(`Next batch starts at block number ${nextBlockNr}`);
 
       const blocks = [await blockWatcher.waitForBlock(nextBlockNr++)];
@@ -53,12 +57,22 @@ if (sourceNetworkName === "rinkeby") {
 
       try {
          await submitHeaders(destinationNetworkConfig, destinationNetworkInstance, blocks);
+         backwardsSteps = 0;
       } catch (err) {
-         console.error(err);
+         console.error(err.message);
          nextBlockNr = nextBlockNr - blocks.length - 1;
+         backwardsSteps++;
       }
    }
 })();
+
+async function getNextBlockNumberInRelay() {
+   const header = await destinationNetworkInstance.contracts.relay.instance.methods.getLongestChainEndpoint().call({
+      "from": destinationNetworkConfig.accounts.submitter.address
+   });
+
+   return (await sourceNetworkInstance.web3.eth.getBlock(header)).number + 1;
+}
 
 function submitHeaders(networkConfig, networkInstance, blocks) {
    const rlpHeaders = blocks.map(block => createRLPHeader(block));
