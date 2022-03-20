@@ -86,10 +86,10 @@ contract Protocol2 is ERC20 {
         require(c.isBurnValid == true, "burn transaction was not successful (e.g., require statement was violated)");
 
         // verify inclusion of burn transaction
-        require(txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, serializedTx, path, rlpMerkleProofTx) == 1, "burn transaction does not exist or has not enough confirmations");
+        require(txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, serializedTx, path, rlpMerkleProofTx) == 0, "burn transaction does not exist or has not enough confirmations");
 
         // verify inclusion of receipt
-        require(txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, serializedReceipt, path, rlpMerkleProofReceipt) == 1, "burn receipt does not exist or has not enough confirmations");
+        require(txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, serializedReceipt, path, rlpMerkleProofReceipt) == 0, "burn receipt does not exist or has not enough confirmations");
 
         uint fee = calculateFee(c.value, TRANSFER_FEE);
         uint remainingValue = c.value - fee;
@@ -131,11 +131,11 @@ contract Protocol2 is ERC20 {
 
         // verify inclusion of burn transaction
         uint txExists = txInclusionVerifier.verifyTransaction(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, serializedTx, path, rlpMerkleProofTx);
-        require(txExists == 1, "claim transaction does not exist or has not enough confirmations");
+        require(txExists == 0, "claim transaction does not exist or has not enough confirmations");
 
         // verify inclusion of receipt
         uint receiptExists = txInclusionVerifier.verifyReceipt(0, rlpHeader, REQUIRED_TX_CONFIRMATIONS, serializedReceipt, path, rlpMerkleProofReceipt);
-        require(receiptExists == 1, "claim receipt does not exist or has not enough confirmations");
+        require(receiptExists == 0, "claim receipt does not exist or has not enough confirmations");
 
         confirmedClaimTransactions[txHash] = true; // IMPORTANT: prevent this tx from being used for further claims
 

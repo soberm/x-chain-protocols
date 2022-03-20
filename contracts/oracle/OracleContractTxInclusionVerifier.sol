@@ -34,11 +34,10 @@ contract OracleContractTxInclusionVerifier is OracleContract, TxInclusionVerifie
         bytes32 blockHash = keccak256(rlpHeader);
 
         if (!findBlockValidationResult(blockHash)) {
-            return 0;
+            return 1;
         }
 
-        uint8 result = uint8(MerklePatriciaProof.verify(rlpEncodedValue, path, rlpEncodedNodes, getHash(rlpHeader, hashPos)));
-        if (result == 0) {
+        if (MerklePatriciaProof.verify(rlpEncodedValue, path, rlpEncodedNodes, getHash(rlpHeader, hashPos)) > 0) {
             return 1;
         }
         return 0;
