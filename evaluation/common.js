@@ -5,7 +5,11 @@ const callContract = async (name, method, from) => {
     console.log(`Calling method ${method._method.name} on ${name}`);
 
     const txReceipt = await method.send({
-        "gas": await method.estimateGas({from}),
+        /*
+         * Add a buffer for changes made by transactions that are executed before this transaction but after
+         * gas estimation has taken place (e.g. a submitBlock of ETH Relay changes gas costs of a claim transaction)
+         */
+        "gas": Math.floor(1.3 * (await method.estimateGas({from}))),
         from,
     });
 
