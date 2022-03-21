@@ -23,7 +23,6 @@ function getContractConfig(web3, config) {
 module.exports = config => {
     const web3 = new Web3(new Web3.providers.WebsocketProvider(config.url));
     web3.eth.transactionBlockTimeout = 350;
-    web3.eth.handleRevert = true;
 
     for (const {privateKey} of Object.values(config.accounts)) {
         web3.eth.accounts.wallet.add(
