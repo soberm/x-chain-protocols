@@ -1,11 +1,7 @@
 const fs = require("fs");
-const path = require("path")
+const path = require("path");
 
 const callContract = async (name, method, from, confirmations) => {
-
-    function newReceipt(receipt) {
-        console.log(`New transaction on ${name} with hash ${receipt.transactionHash}`);
-    }
 
     console.log(`Calling method ${method._method.name} on ${name}`);
 
@@ -19,7 +15,7 @@ const callContract = async (name, method, from, confirmations) => {
     });
 
     const inclusionPromise = tx.then(receipt => {
-        newReceipt(receipt);
+        console.log(`New transaction on ${name} with hash ${receipt.transactionHash}`);
         return receipt;
     });
 
@@ -31,7 +27,6 @@ const callContract = async (name, method, from, confirmations) => {
                     .once("error", reject)
                     .on("confirmation", (confNumber, receipt) => {
                         if (confNumber === confirmations) {
-                            newReceipt(receipt);
                             resolve(receipt);
                             tx.off("confirmation");
                         }
