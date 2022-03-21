@@ -13,7 +13,6 @@ const {
     burn,
     claim,
     confirm,
-    waitUntilConfirmed,
 } = require("../common");
 const config = require("./config");
 const initNetwork = require("../network");
@@ -43,9 +42,10 @@ const network1Instance = initNetwork(config[1]);
         // submit burn transaction
         let balanceInWeiBefore = BigInt(await network0Instance.web3.eth.getBalance(config0.accounts.user.address));
         let startTime = new Date().getTime();
+        const burnPromises = await burn(config0, network0Instance, config1.accounts.user.address, config1.contracts.protocol.address, 1, 0);
         let burnReceipt;
         try {
-            burnReceipt = await burn(config0, network0Instance, config1.accounts.user.address, config1.contracts.protocol.address, 1, 0);
+            burnReceipt = await burnPromises.inclusion;
         } catch (e) {
             console.log(e.message);
             run--;
@@ -60,7 +60,7 @@ const network1Instance = initNetwork(config[1]);
 
         console.log("wait for confirmation of burn tx...");
         startTime = new Date().getTime();
-        await waitUntilConfirmed(network0Instance.web3, burnReceipt.transactionHash, config0.confirmations);
+        await burnPromises.confirmation;
         endTime = new Date().getTime();
         result.burn.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
         console.log("burn tx is confirmed");
@@ -89,10 +89,11 @@ const network1Instance = initNetwork(config[1]);
 
         balanceInWeiBefore = BigInt(await network1Instance.web3.eth.getBalance(config1.accounts.user.address));
         startTime = new Date().getTime();
+        const claimPromises = await claim(config1, network1Instance, rlpHeader, serializedTx, serializedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
         let claimReceipt;
 
         try {
-            claimReceipt = await claim(config1, network1Instance, rlpHeader, serializedTx, serializedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
+            claimReceipt = await claimPromises.inclusion;
         } catch(e) {
             console.log(e.message);
             run--;
@@ -106,7 +107,7 @@ const network1Instance = initNetwork(config[1]);
 
         console.log("wait for confirmation of claim tx...");
         startTime = new Date().getTime();
-        await waitUntilConfirmed(network1Instance.web3, claimReceipt.transactionHash, config1.confirmations);
+        await claimPromises.confirmation;
         endTime = new Date().getTime();
         result.claim.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
         console.log("claim tx is confirmed");
@@ -132,9 +133,10 @@ const network1Instance = initNetwork(config[1]);
 
         balanceInWeiBefore = BigInt(await network0Instance.web3.eth.getBalance(config0.accounts.user.address));
         startTime = new Date().getTime();
+        const confirmPromises = await confirm(config0, network0Instance, rlpHeader, serializedTx, serializedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
         let confirmReceipt;
         try {
-            confirmReceipt = await confirm(config0, network0Instance, rlpHeader, serializedTx, serializedReceipt, rlpEncodedTxNodes, rlpEncodedReceiptNodes, path);
+            confirmReceipt = await confirmPromises.confirmation;
         } catch (e) {
             console.log(e.message);
             run--;
@@ -148,7 +150,7 @@ const network1Instance = initNetwork(config[1]);
 
         console.log("wait for confirmation of confirm tx...");
         startTime = new Date().getTime();
-        await waitUntilConfirmed(network0Instance.web3, confirmReceipt.transactionHash, config0.confirmations);
+        await confirmPromises.confirmation;
         endTime = new Date().getTime();
         result.confirm.confirmationTime = (endTime - startTime) / 1000;  // diff in seconds
         console.log("confirm tx is confirmed");

@@ -1,10 +1,15 @@
 const fs = require("fs");
 const path = require("path")
 
-const callContract = async (name, method, from) => {
+const callContract = async (name, method, from, confirmations) => {
+
+    function newReceipt(receipt) {
+        console.log(`New transaction on ${name} with hash ${receipt.transactionHash}`);
+    }
+
     console.log(`Calling method ${method._method.name} on ${name}`);
 
-    const txReceipt = await method.send({
+    const tx = method.send({
         /*
          * Add a buffer for changes made by transactions that are executed before this transaction but after
          * gas estimation has taken place (e.g. a submitBlock of ETH Relay changes gas costs of a claim transaction)
@@ -13,9 +18,29 @@ const callContract = async (name, method, from) => {
         from,
     });
 
-    console.log(`New transaction on ${name} with hash ${txReceipt.transactionHash}`);
+    const inclusionPromise = tx.then(receipt => {
+        newReceipt(receipt);
+        return receipt;
+    });
 
-    return txReceipt;
+    if (typeof confirmations === "number") {
+        return {
+            "inclusion": inclusionPromise,
+            "confirmation": new Promise((resolve, reject) => {
+                tx
+                    .once("error", reject)
+                    .on("confirmation", (confNumber, receipt) => {
+                        if (confNumber === confirmations) {
+                            newReceipt(receipt);
+                            resolve(receipt);
+                            tx.off("confirmation");
+                        }
+                    })
+            }),
+        };
+    }
+
+    return inclusionPromise;
 };
 
 async function deployContract(jsonConfig, contract, constructorArguments) {
@@ -63,6 +88,7 @@ function burn(jsonConfig, networkInstance, recipientAddr, claimContractAddr, val
         jsonConfig.name,
         networkInstance.contracts.protocol.instance.methods.burn(recipientAddr, claimContractAddr, value, stake),
         jsonConfig.accounts.user.address,
+        jsonConfig.confirmations,
     );
 }
 
@@ -71,6 +97,7 @@ function claim(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedR
         jsonConfig.name,
         networkInstance.contracts.protocol.instance.methods.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
         jsonConfig.accounts.user.address,
+        jsonConfig.confirmations,
     );
 }
 
@@ -79,22 +106,8 @@ function confirm(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncode
         jsonConfig.name,
         networkInstance.contracts.protocol.instance.methods.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
         jsonConfig.accounts.user.address,
+        jsonConfig.confirmations,
     );
-}
-
-async function waitUntilConfirmed(web3, txHash, confirmations) {
-    while (true) {
-        const receipt = await web3.eth.getTransactionReceipt(txHash);
-        if (receipt !== null) {
-            const mostRecentBlockNumber = await web3.eth.getBlockNumber();
-            if (receipt.blockNumber + confirmations <= mostRecentBlockNumber) {
-                // receipt != null -> tx is part of main chain
-                // and block containing tx has at least confirmations successors
-                break;
-            }
-        }
-        await sleep(1500);
-    }
 }
 
 module.exports = {
@@ -106,5 +119,4 @@ module.exports = {
     burn,
     claim,
     confirm,
-    waitUntilConfirmed,
 };
