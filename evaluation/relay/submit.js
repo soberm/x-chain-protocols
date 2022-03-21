@@ -50,6 +50,7 @@ if (sourceNetworkName === "rinkeby") {
 
       for (; nextBlockNr <= blockWatcher.mostRecentBlockNumber && blocks.length < HEADER_BATCH_SIZE; nextBlockNr++) {
          const nextBlock = await sourceNetworkInstance.web3.eth.getBlock(nextBlockNr);
+         if (nextBlock === null) { break; }
          blocks.push(nextBlock);
       }
 
