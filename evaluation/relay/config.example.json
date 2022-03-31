@@ -16,13 +16,13 @@
     "confirmations": 5,
     "contracts": {
       "ethash": {
-        "file": "../../build/contracts/Ethash.json"
+        "file": "build/contracts/Ethash.json"
       },
       "relay": {
-        "file": "../../build/contracts/Ethrelay.json"
+        "file": "build/contracts/Ethrelay.json"
       },
       "protocol": {
-        "file": "../../build/contracts/Protocol2.json"
+        "file": "build/contracts/Protocol2.json"
       }
     }
   },
@@ -43,13 +43,13 @@
     "confirmations": 5,
     "contracts": {
       "ethash": {
-        "file": "../../build/contracts/Ethash.json"
+        "file": "build/contracts/Ethash.json"
       },
       "relay": {
-        "file": "../../build/contracts/Ethrelay.json"
+        "file": "build/contracts/Ethrelay.json"
       },
       "protocol": {
-        "file": "../../build/contracts/Protocol2.json"
+        "file": "build/contracts/Protocol2.json"
       }
     }
   }

@@ -12,16 +12,16 @@
     "confirmations": 5,
     "contracts": {
       "distKey": {
-        "file": "../../build/contracts/DistKeyContract.json"
+        "file": "build/contracts/DistKeyContract.json"
       },
       "registry": {
-        "file": "../../build/contracts/RegistryContract.json"
+        "file": "build/contracts/RegistryContract.json"
       },
       "oracle": {
-        "file": "../../build/contracts/OracleContractTxInclusionVerifier.json"
+        "file": "build/contracts/OracleContractTxInclusionVerifier.json"
       },
       "protocol": {
-        "file": "../../build/contracts/Protocol2.json"
+        "file": "build/contracts/Protocol2.json"
       }
     }
   },
@@ -42,16 +42,16 @@
     "confirmations": 5,
     "contracts": {
       "distKey": {
-        "file": "../../build/contracts/DistKeyContract.json"
+        "file": "build/contracts/DistKeyContract.json"
       },
       "registry": {
-        "file": "../../build/contracts/RegistryContract.json"
+        "file": "build/contracts/RegistryContract.json"
       },
       "oracle": {
-        "file": "../../build/contracts/OracleContractTxInclusionVerifier.json"
+        "file": "build/contracts/OracleContractTxInclusionVerifier.json"
       },
       "protocol": {
-        "file": "../../build/contracts/Protocol2.json"
+        "file": "build/contracts/Protocol2.json"
       }
     }
   }

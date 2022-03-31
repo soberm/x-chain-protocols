@@ -1,21 +1,23 @@
 const fs = require("fs");
+const path = require("path");
 const Web3 = require("web3");
 
 function getContractConfig(web3, config) {
-    const parsedJson = JSON.parse(fs.readFileSync(config.file));
-    const bytecode = parsedJson.bytecode;
+    const parsedJson = JSON.parse(fs.readFileSync(
+        path.resolve(__dirname, "../", config.file),
+    ));
+
     const instance = new web3.eth.Contract(parsedJson.abi);
-    if (typeof config.address !== "undefined" && config.address !== "") {
+    if (typeof config.address !== "undefined") {
         instance.options.address = config.address;
     }
-    const name = config.file.substring(
-        config.file.lastIndexOf("/") + 1,
-        config.file.lastIndexOf(".")
-    );
 
     return {
-        name,
-        bytecode,
+        "name": config.file.substring(
+            config.file.lastIndexOf("/") + 1,
+            config.file.lastIndexOf(".")
+        ),
+        "bytecode": parsedJson.bytecode,
         instance,
     };
 }
