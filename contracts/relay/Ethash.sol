@@ -1,1 +1,1 @@
-../../relay/contracts/Ethash.sol
+../../verifiers/relay/contracts/Ethash.sol

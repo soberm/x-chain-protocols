@@ -1,1 +1,1 @@
-../../oracle/ioporaclecontracts/contracts/RegistryContract.sol
+../../verifiers/oracle/ioporaclecontracts/contracts/RegistryContract.sol

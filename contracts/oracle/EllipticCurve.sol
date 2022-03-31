@@ -1,1 +1,1 @@
-../../oracle/ioporaclecontracts/contracts/EllipticCurve.sol
+../../verifiers/oracle/ioporaclecontracts/contracts/EllipticCurve.sol

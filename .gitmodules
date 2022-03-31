@@ -1,8 +1,8 @@
 [submodule "ioporacle"]
-	path = oracle
+	path = verifiers/oracle
 	url = https://github.com/pantos-io/ioporacle.git
 	branch = evaluation
 [submodule "ethrelay"]
-	path = relay
+	path = verifiers/relay
 	url = https://github.com/pantos-io/ethrelay.git
 	branch = evaluation

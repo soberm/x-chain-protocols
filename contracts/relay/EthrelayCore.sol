@@ -1,1 +1,1 @@
-../../relay/contracts/EthrelayCore.sol
+../../verifiers/relay/contracts/EthrelayCore.sol
