@@ -21,10 +21,8 @@ You need to have the following tools installed:
 
 ### Deployment
 
-1. Clone the repository: `git clone git@github.com:pf92/x-chain-protocols.git`
-2. Change into the project directory: `cd x-chain-protocols/`
-3. Install all dependencies: `npm install`
-4. Deploy contracts: `truffle migrate --reset`
+1. Install all dependencies: `npm install`
+2. Deploy contracts: `truffle migrate --reset`
 
 ### Testing
 
