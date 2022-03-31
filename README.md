@@ -26,11 +26,23 @@ You need to have the following tools installed:
 
 ### Testing
 
-Run the tests with `truffle test`. Apart from conducting tests on a single blockchain, the directory `/evaluation` contains scripts for conducting asset transfers between two EVM-based blockchains, e.g., to send ERC-20 tokens from Rinkeby to Ropsten. For that, you have to provide the respective node URLs, your account addresses and the corresponding private keys in the file `/evaluation/config.json`. To deploy the contracts on both chains, run `truffle exec ./evaluation/deploy.js`. This will deploy the contracts on both blockchains and store their respective addresses in the file `/evaluation/config.json`. To conduct assets transfers, run `truffle exec ./evaluation/evaluation.js`.
+Run the tests with `truffle test`.
+
+Apart from conducting tests on a single blockchain, the directory `/evaluation` contains scripts for conducting asset transfers between two EVM-based blockchains, e.g., to send ERC-20 tokens from Rinkeby to Ropsten.
+Scripts are available for two different transaction inclusion verifiers, namely via [ETH Relay](https://github.com/pantos-io/ethrelay) and an [oracle](https://github.com/pantos-io/ioporacle).
+
+In order to start the evaluation, execute the following steps:
+
+1. Change the directory to either `oracle` or `relay`, depending on your choice of transaction inclusion verifier.
+2. Provide the chain and account information in `config.json` (an example config can be found in `config.example.json`).
+3. Run `node deploy.js` in order to deploy the contracts on the configured networks. Contract addresses will be filled into the config file automatically.
+4. _Relay only:_ Run `node submit.js rinkeby` and `node submit.js ropsten` in two separate processes to start relaying block headers.
+5. Run `node evaluation.js` to start the evaluation script.
 
 ### Transaction Inclusion Verification
 
-The implemented concepts rely on a mechanism to verify within some blockchain whether a transaction has been included and confirmed by enough succeeding blocks on some other blockchains. This project does not provide such a mechanism, it merely provides an interface and a mock contract implementing the interface without conducting any inclusion verification. If you wish to run the implemenantion with some other mechanisms such as relays (e.g., the [Testimonium relay](https://github.com/pantos-io/testimonium)), please make sure that the corresponding smart contract implements the interfaces specified in `contracts/TxInclusionVerifier.sol`. The abi of the contract can be specified in the file `/evaluation/config.json` (see txVerifier.file). When calling the deploy script, this contract will be automatically deployed before the contracts implementing the transfer protocols.
+The implemented concepts rely on a mechanism to verify within some blockchain whether a transaction has been included and confirmed by enough succeeding blocks on some other blockchains.
+If you wish to run the implementation with some other verifiers that are not included in the project, please make sure that the corresponding smart contract implements the interfaces specified in `contracts/TxInclusionVerifier.sol`.
 
 ## How to contribute
 
