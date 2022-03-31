@@ -61,3 +61,4 @@ out/
 
 /evaluation/*/*.csv
 /evaluation/*/*.json
+!/evaluation/*/config.example.json

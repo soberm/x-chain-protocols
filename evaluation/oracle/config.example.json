@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Network_1",
+    "url": "<NODE_ENDPOINT>",
+    "chainId": 0,
+    "accounts": {
+      "user": {
+        "address": "0x0000000000000000000000000000000000000000",
+        "privateKey": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "confirmations": 5,
+    "contracts": {
+      "distKey": {
+        "file": "../../build/contracts/DistKeyContract.json"
+      },
+      "registry": {
+        "file": "../../build/contracts/RegistryContract.json"
+      },
+      "oracle": {
+        "file": "../../build/contracts/OracleContractTxInclusionVerifier.json"
+      },
+      "protocol": {
+        "file": "../../build/contracts/Protocol2.json"
+      }
+    }
+  },
+  {
+    "name": "Network_2",
+    "url": "<NODE_ENDPOINT>",
+    "chainId": 0,
+    "accounts": {
+      "submitter": {
+        "address": "0x0000000000000000000000000000000000000000",
+        "privateKey": "0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "user": {
+        "address": "0x0000000000000000000000000000000000000000",
+        "privateKey": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "confirmations": 5,
+    "contracts": {
+      "distKey": {
+        "file": "../../build/contracts/DistKeyContract.json"
+      },
+      "registry": {
+        "file": "../../build/contracts/RegistryContract.json"
+      },
+      "oracle": {
+        "file": "../../build/contracts/OracleContractTxInclusionVerifier.json"
+      },
+      "protocol": {
+        "file": "../../build/contracts/Protocol2.json"
+      }
+    }
+  }
+]
