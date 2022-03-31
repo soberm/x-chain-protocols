@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const callContract = async (name, method, from, confirmations) => {
+async function callContract(name, method, from, confirmations) {
 
     console.log(`Calling method ${method._method.name} on ${name}`);
 
@@ -74,34 +74,39 @@ async function registerTokenContract(networkName, networkInstance, contractAddrT
     );
 }
 
-const sleep = (ms) => {
-    return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms) {
+    return new Promise(resolve => { setTimeout(resolve, ms); });
 };
 
-function burn(jsonConfig, networkInstance, recipientAddr, claimContractAddr, value, stake) {
+function burn(networkFrom, networkTo) {
     return callContract(
-        jsonConfig.name,
-        networkInstance.contracts.protocol.instance.methods.burn(recipientAddr, claimContractAddr, value, stake),
-        jsonConfig.accounts.user.address,
-        jsonConfig.confirmations,
+        networkFrom.name,
+        networkFrom.contracts.protocol.instance.methods.burn(
+            networkTo.accounts.user.address,
+            networkTo.contracts.protocol.instance.options.address,
+            1,
+            0,
+        ),
+        networkFrom.accounts.user.address,
+        networkFrom.confirmations,
     );
 }
 
-function claim(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
+function claim(network, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
     return callContract(
-        jsonConfig.name,
-        networkInstance.contracts.protocol.instance.methods.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
-        jsonConfig.accounts.user.address,
-        jsonConfig.confirmations,
+        network.name,
+        network.contracts.protocol.instance.methods.claim(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
+        network.accounts.user.address,
+        network.confirmations,
     );
 }
 
-function confirm(jsonConfig, networkInstance, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
+function confirm(network, rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path) {
     return callContract(
-        jsonConfig.name,
-        networkInstance.contracts.protocol.instance.methods.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
-        jsonConfig.accounts.user.address,
-        jsonConfig.confirmations,
+        network.name,
+        network.contracts.protocol.instance.methods.confirm(rlpHeader, rlpEncodedTx, rlpEncodedReceipt, rlpMerkleProofTx, rlpMerkleProofReceipt, path),
+        network.accounts.user.address,
+        network.confirmations,
     );
 }
 

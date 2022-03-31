@@ -35,6 +35,10 @@ module.exports = config => {
     const networkConfig = {
         web3,
         "contracts": {},
+        "name": config.name,
+        "chainId": config.chainId,
+        "accounts": config.accounts,
+        "confirmations": config.confirmations,
     };
 
     for (const [name, contract] of Object.entries(config.contracts)) {
