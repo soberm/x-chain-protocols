@@ -36,7 +36,11 @@ In order to start the evaluation, execute the following steps:
 1. Change the directory to either `oracle` or `relay`, depending on your choice of transaction inclusion verifier.
 2. Provide the chain and account information in `config.json` (an example config can be found in `config.example.json`).
 3. Run `node deploy.js` in order to deploy the contracts on the configured networks. Contract addresses will be filled into the config file automatically.
+
 4. _Relay only:_ Run `node submit.js rinkeby` and `node submit.js ropsten` in two separate processes to start relaying block headers.
+   
+   _Oracle only:_ Start the oracle nodes (see respective [repository for instructions](https://github.com/pantos-io/ioporacle))
+
 5. Run `node evaluation.js` to start the evaluation script.
 
 ### Transaction Inclusion Verification
